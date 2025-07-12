@@ -1,0 +1,355 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Foundation and Authentication",
+        "description": "Initialize Next.js project with TypeScript and integrate Clerk authentication with social login options",
+        "details": "Create Next.js 14+ project with TypeScript, ESLint, and Tailwind CSS. Install and configure Clerk authentication with Google, GitHub, and LinkedIn social providers. Set up environment variables for Clerk keys. Create authentication middleware and protected route patterns. Implement user registration/login flows with proper error handling and redirects.",
+        "testStrategy": "Test social login flows for each provider, verify JWT token generation, test protected route access, and validate user session persistence across browser refreshes",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Next.js Project with TypeScript and Core Dependencies",
+            "description": "Create a new Next.js 14+ project with TypeScript, ESLint, and Tailwind CSS configuration",
+            "dependencies": [],
+            "details": "Run 'npx create-next-app@latest' with TypeScript and Tailwind CSS options. Configure ESLint for TypeScript. Set up project structure with proper TypeScript configuration in tsconfig.json. Install additional dependencies like @types/node. Verify the development server runs correctly.",
+            "status": "done",
+            "testStrategy": "Verify project builds without errors and development server starts successfully"
+          },
+          {
+            "id": 2,
+            "title": "Install and Configure Clerk Authentication Package",
+            "description": "Install Clerk authentication package and set up basic configuration with environment variables",
+            "dependencies": [
+              1
+            ],
+            "details": "Install @clerk/nextjs package. Create .env.local file with NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY placeholders. Configure Clerk provider in app layout or _app.tsx. Set up basic Clerk configuration object with domain and appearance settings.",
+            "status": "done",
+            "testStrategy": "Verify Clerk package imports correctly and environment variables are properly loaded"
+          },
+          {
+            "id": 3,
+            "title": "Configure Social Login Providers",
+            "description": "Set up Google, GitHub, and LinkedIn OAuth applications and configure them in Clerk dashboard",
+            "dependencies": [
+              2
+            ],
+            "details": "Create OAuth applications in Google Cloud Console, GitHub Developer Settings, and LinkedIn Developer Portal. Configure redirect URLs for each provider. Add social provider configurations in Clerk dashboard. Update environment variables with OAuth client IDs and secrets. Configure social login options in Clerk settings.",
+            "status": "done",
+            "testStrategy": "Test social login flows manually through Clerk's development environment"
+          },
+          {
+            "id": 4,
+            "title": "Implement Authentication Middleware and Route Protection",
+            "description": "Create Next.js middleware for authentication and set up protected route patterns",
+            "dependencies": [
+              3
+            ],
+            "details": "Create middleware.ts file in project root. Implement Clerk's authMiddleware to protect routes. Define public and private route patterns. Set up redirect logic for unauthenticated users. Configure middleware matcher for specific route patterns. Create higher-order component or hook for client-side route protection.",
+            "status": "done",
+            "testStrategy": "Test route protection by accessing protected routes without authentication and verify proper redirects"
+          },
+          {
+            "id": 5,
+            "title": "Build User Registration and Login Flow Components",
+            "description": "Create authentication UI components with proper error handling and user flow management",
+            "dependencies": [
+              4
+            ],
+            "details": "Create SignIn and SignUp components using Clerk's pre-built components or custom implementations. Implement error handling for authentication failures. Set up post-authentication redirects to appropriate pages. Create user profile management components. Add loading states and proper UX feedback. Implement sign-out functionality.",
+            "status": "done",
+            "testStrategy": "Test complete user flows including registration, login, profile access, and logout with various error scenarios"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Setup Supabase Database and Schema",
+        "description": "Configure Supabase PostgreSQL database with complete schema for companies, users, and artifacts",
+        "details": "Set up Supabase project and configure database connection. Create companies table with YC data fields (id, yc_id, name, batch, stage, team_size, is_ai_related, spearfish_score, github_repos, huggingface_models, etc.). Create user_profiles table synced with Clerk user data. Create artifacts table for templates and completions. Set up RLS policies, indexes for performance, and real-time subscriptions. Configure database migrations and seed data.",
+        "testStrategy": "Test database connections, verify table creation and constraints, test RLS policies with different user roles, validate data integrity and foreign key relationships",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize Supabase Project and Database Connection",
+            "description": "Create new Supabase project, configure environment variables, and establish database connection in the Next.js application",
+            "dependencies": [],
+            "details": "Create a new Supabase project through the dashboard. Set up environment variables (.env.local) with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY. Install @supabase/supabase-js and create a Supabase client instance in src/lib/supabase.ts. Configure the client with proper TypeScript types and authentication settings. Test the connection by running a simple query.",
+            "status": "done",
+            "testStrategy": "Create a simple API route that tests database connectivity by running a basic SELECT query. Verify environment variables are properly loaded and the Supabase client initializes without errors."
+          },
+          {
+            "id": 2,
+            "title": "Create Core Database Tables (Companies, Users, Artifacts)",
+            "description": "Design and create the main database tables with proper column definitions, primary keys, and foreign key relationships",
+            "dependencies": [
+              1
+            ],
+            "details": "Create companies table with columns: id (uuid), yc_id (text unique), name (text), batch (text), stage (text), team_size (integer), is_ai_related (boolean), spearfish_score (numeric), github_repos (jsonb), huggingface_models (jsonb), website_url (text), description (text), created_at (timestamp), updated_at (timestamp). Create user_profiles table: id (uuid), clerk_user_id (text unique), email (text), full_name (text), company_id (uuid references companies), role (text), created_at, updated_at. Create artifacts table: id (uuid), company_id (uuid references companies), created_by (uuid references user_profiles), type (text), title (text), content (jsonb), metadata (jsonb), is_template (boolean), parent_artifact_id (uuid self-reference), created_at, updated_at.",
+            "status": "done",
+            "testStrategy": "Write migration scripts that can be rolled back. Test table creation in a development environment first. Verify all foreign key constraints work correctly by inserting test data with proper relationships."
+          },
+          {
+            "id": 3,
+            "title": "Implement Row Level Security (RLS) Policies",
+            "description": "Configure comprehensive RLS policies to ensure data security and proper access control based on user authentication and company membership [Updated: 7/11/2025]",
+            "dependencies": [
+              2
+            ],
+            "details": "Enable RLS on all tables. For companies table: allow public read for basic info, restrict write to company admins. For user_profiles: users can read/update their own profile, company members can view teammates. For artifacts: implement policies based on company membership - users can CRUD their company's artifacts, read public templates. Create helper functions in PostgreSQL for checking user permissions. Set up service role key for admin operations. Configure policies to work with Clerk JWT claims.\n<info added on 2025-07-12T01:26:07.085Z>\nI cannot generate new content to append to this subtask based on the request \"Show current implementation notes and progress\". This request is asking to view existing information, not to add new content. The subtask already contains implementation details about RLS policies, and there's no new information to add without actual implementation work being done or reported.\n</info added on 2025-07-12T01:26:07.085Z>",
+            "status": "done",
+            "testStrategy": "Create test scenarios for different user roles and permissions. Verify that users can only access their company's data. Test that public templates are readable by all authenticated users. Ensure service role bypasses RLS for admin operations."
+          },
+          {
+            "id": 4,
+            "title": "Create Database Indexes and Optimize Performance",
+            "description": "Design and implement strategic indexes for query performance, configure real-time subscriptions, and optimize for common access patterns",
+            "dependencies": [
+              3
+            ],
+            "details": "Create indexes on: companies(yc_id), companies(batch), companies(is_ai_related), user_profiles(clerk_user_id), user_profiles(company_id), artifacts(company_id, type), artifacts(is_template), artifacts(created_by). Set up composite indexes for common query patterns. Configure btree indexes for sorting operations on created_at/updated_at. Create GIN indexes on JSONB columns (github_repos, huggingface_models, content) for efficient JSON queries. Enable real-time subscriptions on artifacts table for live updates. Configure connection pooling settings.",
+            "status": "done",
+            "testStrategy": "Use EXPLAIN ANALYZE to verify index usage in common queries. Benchmark query performance before and after index creation. Test real-time subscriptions with multiple concurrent connections."
+          },
+          {
+            "id": 5,
+            "title": "Setup Database Migrations and Seed Data",
+            "description": "Implement a robust migration system for schema versioning and create comprehensive seed data for development and testing",
+            "dependencies": [
+              4
+            ],
+            "details": "Set up Supabase migrations using the CLI (supabase/migrations folder). Create numbered migration files for each schema change. Implement seed.sql with sample YC companies data including realistic spearfish_scores, GitHub repos, and HuggingFace models. Create template artifacts for common use cases (pitch decks, product roadmaps, technical documentation). Set up npm scripts for running migrations: 'db:migrate', 'db:reset', 'db:seed'. Document migration procedures in README. Create a migration for Clerk webhook integration to sync user data.",
+            "status": "done",
+            "testStrategy": "Test migrations on a fresh database to ensure they run in correct order. Verify seed data creates valid relationships between tables. Test rollback procedures for each migration. Ensure development environment can be quickly reset with fresh seed data."
+          },
+          {
+            "id": 6,
+            "title": "Create Supabase project and configure database connection",
+            "description": "Set up new Supabase project, obtain connection strings, and configure environment variables for database access",
+            "dependencies": [],
+            "details": "Create Supabase account/project, get database URL and anon key, set up .env.local with SUPABASE_URL and SUPABASE_ANON_KEY, install @supabase/supabase-js client library, create initial database connection utility",
+            "status": "done",
+            "testStrategy": "Test database connection by running a simple query to verify connectivity and authentication"
+          },
+          {
+            "id": 7,
+            "title": "Design and create companies table schema",
+            "description": "Create comprehensive companies table with YC data fields and appropriate data types",
+            "dependencies": [
+              6
+            ],
+            "details": "Create companies table with fields: id (uuid primary key), yc_id (text unique), name (text), batch (text), stage (text), team_size (integer), is_ai_related (boolean), spearfish_score (numeric), github_repos (jsonb), huggingface_models (jsonb), website_url (text), description (text), created_at/updated_at timestamps",
+            "status": "done",
+            "testStrategy": "Insert sample company data and verify all fields accept correct data types, test unique constraints on yc_id"
+          },
+          {
+            "id": 8,
+            "title": "Create user_profiles table with Clerk integration",
+            "description": "Set up user_profiles table that syncs with Clerk authentication data",
+            "dependencies": [
+              6
+            ],
+            "details": "Create user_profiles table with fields: id (uuid primary key), clerk_user_id (text unique), email (text), first_name (text), last_name (text), profile_image_url (text), created_at/updated_at timestamps. Set up triggers or webhooks for Clerk user sync",
+            "status": "done",
+            "testStrategy": "Test user profile creation on Clerk signup, verify data synchronization between Clerk and Supabase"
+          },
+          {
+            "id": 9,
+            "title": "Design and implement artifacts table schema",
+            "description": "Create artifacts table for storing templates and completions with proper relationships",
+            "dependencies": [
+              7,
+              8
+            ],
+            "details": "Create artifacts table with fields: id (uuid primary key), user_id (uuid foreign key to user_profiles), company_id (uuid foreign key to companies), type (enum: template/completion), title (text), content (text), metadata (jsonb), is_public (boolean), created_at/updated_at timestamps",
+            "status": "done",
+            "testStrategy": "Test artifact creation, verify foreign key relationships work correctly, test different artifact types"
+          },
+          {
+            "id": 10,
+            "title": "Configure RLS policies, indexes, and real-time subscriptions",
+            "description": "Set up Row Level Security policies, performance indexes, and real-time features",
+            "dependencies": [
+              7,
+              8,
+              9
+            ],
+            "details": "Create RLS policies for secure data access (users can only access their own data), add indexes on frequently queried fields (yc_id, user_id, company_id, created_at), enable real-time subscriptions for artifacts table, set up database migrations structure",
+            "status": "done",
+            "testStrategy": "Test RLS policies with different user scenarios, verify query performance with indexes, test real-time updates in application"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Y Combinator API Integration with AI Company Classification",
+        "description": "Integrate YC API to fetch all companies and implement AI classification system for target batches",
+        "details": "Build YC API integration to fetch companies from W22, S22, W23 batches. Implement AI classification using OpenAI GPT-4 to identify AI-related companies based on descriptions and industry tags. Create data sync jobs to update company information daily. Store classified companies in Supabase with AI-related flag. Handle API rate limiting and error scenarios gracefully.",
+        "testStrategy": "Test API integration with YC endpoints, validate AI classification accuracy on sample companies, test data synchronization and duplicate handling, verify error handling for API failures",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Y Combinator API client and authentication",
+            "description": "Create API client for Y Combinator's public API with proper authentication and base configuration",
+            "dependencies": [],
+            "details": "Research YC's public API endpoints and authentication requirements. Create a dedicated API client class with proper error handling, request/response typing, and configuration management. Set up environment variables for API credentials if required.",
+            "status": "done",
+            "testStrategy": "Unit tests for API client initialization, authentication flow, and basic connectivity. Mock API responses for consistent testing."
+          },
+          {
+            "id": 2,
+            "title": "Implement company data fetching for target batches",
+            "description": "Build functions to fetch company data from W22, S22, and W23 batches with rate limiting and pagination",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement batch-specific data fetching with proper pagination handling. Add rate limiting to respect API quotas. Include retry logic with exponential backoff for failed requests. Parse and validate company data structure including name, description, industry, batch info.",
+            "status": "done",
+            "testStrategy": "Integration tests with YC API (using test data). Unit tests for pagination, rate limiting, and error handling scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Develop AI classification system using OpenAI GPT-4",
+            "description": "Create AI-powered classification to identify AI-related companies based on descriptions and industry tags",
+            "dependencies": [],
+            "details": "Design classification prompts for GPT-4 to analyze company descriptions and determine AI relevance. Include classification criteria for various AI domains (ML, computer vision, NLP, etc.). Implement confidence scoring and result validation. Handle edge cases and ambiguous classifications.",
+            "status": "done",
+            "testStrategy": "Test with known AI companies for accuracy validation. Unit tests for prompt construction and response parsing. Performance tests for classification speed."
+          },
+          {
+            "id": 4,
+            "title": "Build Supabase database schema and data storage layer",
+            "description": "Design and implement database schema for storing YC companies with AI classification flags and metadata",
+            "dependencies": [],
+            "details": "Create companies table with fields for YC data (name, description, batch, industry) and AI classification results (is_ai_related, confidence_score, classification_date). Implement data access layer with CRUD operations. Add indexes for efficient querying and filtering.",
+            "status": "done",
+            "testStrategy": "Database integration tests for schema creation and data operations. Test data integrity constraints and query performance."
+          },
+          {
+            "id": 5,
+            "title": "Implement daily sync job with error handling and monitoring",
+            "description": "Create automated daily sync process to update company data and classifications with comprehensive error handling",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Build scheduled job to fetch latest YC data, run AI classifications, and update database. Implement comprehensive error handling for API failures, AI service issues, and database problems. Add logging and monitoring for sync status tracking. Include data deduplication and conflict resolution.",
+            "status": "done",
+            "testStrategy": "End-to-end testing of sync process. Error scenario testing (API down, AI service timeout, database issues). Performance testing for large data volumes."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Spearfish Scoring Algorithm Implementation",
+        "description": "Implement comprehensive weighted scoring system based on spearfishing methodology criteria",
+        "details": "Create spearfish scoring algorithm with weighted criteria: Heavy weight (W22/S22/W23 batches), High weight (18-24 months age, Series A stage), Medium weight (GitHub star growth >1K/month, B2B focus, HuggingFace activity >100K downloads), Low weight (conference presence, boring names, hiring status). Implement score calculation function (0-100) and daily recalculation job. Store scores in database with timestamp tracking.",
+        "testStrategy": "Test scoring algorithm with known company data, validate weight calculations, test score updates with changing data, verify score distribution across company dataset",
+        "priority": "high",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Company Discovery Interface with Search and Filtering",
+        "description": "Build main company discovery interface with ranked display, search, and basic filtering capabilities",
+        "details": "Create responsive company discovery page showing all AI companies ranked by spearfish score. Implement company cards with key metrics (score, batch, team size, growth indicators). Add text search across names, descriptions, and industries. Build filtering system for batch, team size, and hiring status. Implement semantic search using OpenAI embeddings for better query understanding. Add pagination and infinite scroll for performance.",
+        "testStrategy": "Test search functionality with various queries, validate filtering combinations, test performance with large datasets, verify responsive design across devices",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Company Profile Pages with Detailed Intelligence",
+        "description": "Create comprehensive company profile pages displaying YC data, scores, and spearfish analysis",
+        "details": "Build detailed company profile pages with tabbed organization (Overview, Technical, Team, Opportunities). Display YC data, spearfish score breakdown with explanations, GitHub repository information, and growth metrics. Create 'Why Spearfish This Company' section highlighting specific signals and opportunities. Add dynamic content loading and caching for performance. Implement breadcrumb navigation and social sharing.",
+        "testStrategy": "Test profile page loading performance, validate data accuracy and completeness, test tab navigation and content organization, verify score explanations match algorithm",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "GitHub API Integration for Technical Signals",
+        "description": "Integrate GitHub API to track repository activity and star growth for enhanced company scoring",
+        "details": "Build GitHub API integration to fetch repository data for AI companies. Track star counts, commit activity, and growth metrics. Implement monthly star growth calculation (>1K/month criteria). Create background jobs for daily GitHub data updates with proper rate limiting (5000 requests/hour). Store historical data for trend analysis. Handle API errors and missing repositories gracefully.",
+        "testStrategy": "Test GitHub API integration and rate limiting, validate star growth calculations, test background job execution, verify error handling for private/missing repositories",
+        "priority": "medium",
+        "dependencies": [
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Basic Artifact Suggestion System",
+        "description": "Create initial artifact suggestion engine with templates and static recommendations",
+        "details": "Build artifact suggestion system with predefined templates for different company types and user skill levels. Create artifact categories (code contributions, business analyses, technical demos). Implement basic matching algorithm between user skills and company needs. Store artifact templates with implementation guides and success metrics. Add artifact tracking and completion status for users.",
+        "testStrategy": "Test artifact suggestion accuracy for different user profiles, validate template completeness and clarity, test artifact tracking and completion workflows",
+        "priority": "medium",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Email Template Generation System",
+        "description": "Implement email template system for cold outreach with personalization placeholders",
+        "details": "Create email template system with fill-in-the-blank style personalization. Build templates for different outreach scenarios (artifact presentation, expertise demonstration, value proposition). Implement template customization with company-specific data insertion. Add email preview functionality and basic formatting options. Store user email campaigns and track template usage patterns.",
+        "testStrategy": "Test email template generation with various company data, validate personalization accuracy, test email preview functionality, verify template variety and effectiveness",
+        "priority": "medium",
+        "dependencies": [
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "User Dashboard and Progress Tracking",
+        "description": "Build user dashboard for managing spearfish campaigns, artifacts, and tracking progress",
+        "details": "Create user dashboard showing active spearfish campaigns, completed artifacts, and email outreach status. Implement progress tracking with visual indicators and success metrics. Add user profile management with skills, interests, and preferences. Build campaign history and analytics views. Implement data export functionality for user portfolios and campaign results.",
+        "testStrategy": "Test dashboard functionality and data accuracy, validate progress tracking calculations, test profile management and data persistence, verify analytics and reporting features",
+        "priority": "low",
+        "dependencies": [
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-11T03:44:57.583Z",
+      "updated": "2025-07-12T06:09:00.415Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
