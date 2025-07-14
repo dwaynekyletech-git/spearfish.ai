@@ -264,8 +264,62 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define and Document Scoring Criteria and Weights",
+            "description": "Identify and clearly document all spearfishing methodology criteria and assign appropriate weights (heavy, high, medium, low) as specified for each batch, age, stage, and activity metric.",
+            "dependencies": [],
+            "details": "Ensure criteria are specific, measurable, and aligned with project goals. Collaborate with stakeholders to confirm accuracy and completeness of the criteria and their weights.",
+            "status": "done",
+            "testStrategy": "Review documentation with stakeholders and verify that all required criteria and weights are present and unambiguous."
+          },
+          {
+            "id": 2,
+            "title": "Design Scoring Calculation Logic",
+            "description": "Develop the algorithm to calculate a composite score (0-100) for each entity based on the defined weighted criteria.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement logic to multiply each criterion's score by its weight, sum the results, and normalize to a 0-100 scale. Ensure the algorithm can handle missing or partial data gracefully.",
+            "status": "done",
+            "testStrategy": "Unit test the calculation logic with sample data sets to verify correct weighted scoring and normalization."
+          },
+          {
+            "id": 3,
+            "title": "Implement Score Calculation Function",
+            "description": "Code the function that takes entity data as input and outputs the calculated spearfish score using the designed algorithm.",
+            "dependencies": [
+              2
+            ],
+            "details": "Develop the function in the target programming language, ensuring it is modular, testable, and efficient. Include error handling for invalid or incomplete input.",
+            "status": "done",
+            "testStrategy": "Write automated tests to validate function output against expected scores for a variety of input scenarios."
+          },
+          {
+            "id": 4,
+            "title": "Develop Daily Score Recalculation Job",
+            "description": "Create a scheduled job that recalculates scores for all entities daily and updates the results.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement a job scheduler (e.g., cron, cloud scheduler) to trigger the score calculation function for all relevant entities every 24 hours.",
+            "status": "done",
+            "testStrategy": "Simulate daily runs in a test environment and verify that all entities are recalculated and updated as expected."
+          },
+          {
+            "id": 5,
+            "title": "Store Scores with Timestamp Tracking in Database",
+            "description": "Design and implement database schema and logic to store calculated scores along with timestamps for each entity.",
+            "dependencies": [
+              4
+            ],
+            "details": "Ensure the database can efficiently store, retrieve, and update scores, and that each score entry is associated with a precise calculation timestamp for auditability.",
+            "status": "done",
+            "testStrategy": "Test database operations for storing, retrieving, and updating scores, and confirm timestamp accuracy and integrity."
+          }
+        ]
       },
       {
         "id": 5,
@@ -277,8 +331,62 @@
         "dependencies": [
           4
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Responsive Company Discovery Page Layout",
+            "description": "Create a responsive layout for the company discovery interface that adapts seamlessly across devices and screen sizes.",
+            "dependencies": [],
+            "details": "Apply user-centered and cross-platform design principles to ensure the interface is visually appealing and functional on desktop and mobile. Incorporate branding and visual identity elements for consistency.",
+            "status": "done",
+            "testStrategy": "Test layout responsiveness using multiple device simulators and browsers; validate visual consistency and usability."
+          },
+          {
+            "id": 2,
+            "title": "Implement Ranked Company Cards with Key Metrics",
+            "description": "Develop company cards that display essential metrics such as spearfish score, batch, team size, and growth indicators, and ensure companies are ranked accordingly.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design and build reusable card components that clearly present all required data. Ensure ranking logic is applied to the display order.",
+            "status": "done",
+            "testStrategy": "Verify that all metrics are displayed correctly and that companies are ranked as expected; conduct usability testing for clarity."
+          },
+          {
+            "id": 3,
+            "title": "Develop Text and Semantic Search Functionality",
+            "description": "Enable users to search companies by name, description, and industry using both traditional text search and semantic search powered by OpenAI embeddings.",
+            "dependencies": [
+              2
+            ],
+            "details": "Integrate a search bar supporting keyword queries and semantic understanding for improved relevance. Ensure search results update dynamically.",
+            "status": "done",
+            "testStrategy": "Test search accuracy with a variety of queries; compare semantic and text search results for relevance and performance."
+          },
+          {
+            "id": 4,
+            "title": "Build Filtering System for Batch, Team Size, and Hiring Status",
+            "description": "Implement interactive filters allowing users to refine company results by batch, team size, and hiring status.",
+            "dependencies": [
+              3
+            ],
+            "details": "Design filter UI components and connect them to the data layer to update results in real time. Ensure filters are intuitive and accessible.",
+            "status": "done",
+            "testStrategy": "Test filter combinations for correct result updates; validate accessibility and ease of use through user feedback."
+          },
+          {
+            "id": 5,
+            "title": "Add Pagination and Infinite Scroll for Performance",
+            "description": "Integrate pagination and infinite scroll mechanisms to efficiently load and display large sets of company data.",
+            "dependencies": [
+              4
+            ],
+            "details": "Choose and implement a loading strategy (pagination or infinite scroll) that maintains performance and user experience for large datasets.",
+            "status": "done",
+            "testStrategy": "Test loading performance with large datasets; ensure smooth scrolling and correct data loading without duplication or missing entries."
+          }
+        ]
       },
       {
         "id": 6,
@@ -348,7 +456,7 @@
     ],
     "metadata": {
       "created": "2025-07-11T03:44:57.583Z",
-      "updated": "2025-07-12T06:09:00.415Z",
+      "updated": "2025-07-14T19:27:44.099Z",
       "description": "Tasks for master context"
     }
   }
