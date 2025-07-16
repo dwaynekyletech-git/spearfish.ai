@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
         await ycDatabase.updateAIClassification(
           testCompany.id,
           originalAiStatus,
-          testCompany.ai_confidence_score
+          testCompany.ai_confidence_score ?? undefined
         );
 
         return NextResponse.json({

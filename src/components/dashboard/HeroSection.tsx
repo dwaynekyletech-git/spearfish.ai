@@ -98,7 +98,7 @@ export function HeroSection({ onSearch, onTagFilter }: HeroSectionProps) {
         {/* Search Results Info */}
         {searchQuery && (
           <div className="text-slate-400 text-sm">
-            Searching for: <span className="text-white font-medium">"{searchQuery}"</span>
+            Searching for: <span className="text-white font-medium">&quot;{searchQuery}&quot;</span>
           </div>
         )}
 

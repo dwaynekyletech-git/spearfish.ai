@@ -391,72 +391,321 @@
       {
         "id": 6,
         "title": "Company Profile Pages with Detailed Intelligence",
-        "description": "Create comprehensive company profile pages displaying YC data, scores, and spearfish analysis",
-        "details": "Build detailed company profile pages with tabbed organization (Overview, Technical, Team, Opportunities). Display YC data, spearfish score breakdown with explanations, GitHub repository information, and growth metrics. Create 'Why Spearfish This Company' section highlighting specific signals and opportunities. Add dynamic content loading and caching for performance. Implement breadcrumb navigation and social sharing.",
-        "testStrategy": "Test profile page loading performance, validate data accuracy and completeness, test tab navigation and content organization, verify score explanations match algorithm",
-        "priority": "medium",
+        "description": "Create comprehensive company profile pages displaying real YC data, scores, and spearfish analysis from backend services",
+        "status": "done",
         "dependencies": [
           5
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Build detailed company profile pages with tabbed organization (Overview, Technical, Team, Opportunities). Display real YC data from API service, spearfish score breakdown from scoring algorithm, GitHub repository information, and growth metrics from Supabase. Create 'Why Spearfish This Company' section highlighting specific signals and opportunities. Replace all mock data with actual API calls. Add dynamic content loading and caching for performance. Implement breadcrumb navigation and social sharing.",
+        "testStrategy": "Test profile page loading performance with real data, validate data accuracy from backend services, test tab navigation and content organization, verify score explanations match algorithm output, test API integration and error handling",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Tabbed Company Profile Page Layout",
+            "description": "Create the structural layout for company profile pages with tabbed navigation for Overview, Technical, Team, and Opportunities sections.",
+            "dependencies": [],
+            "details": "Develop a responsive UI/UX design that organizes company data into clearly separated tabs, ensuring intuitive navigation and accessibility.",
+            "status": "done",
+            "testStrategy": "Verify tab switching, layout responsiveness, and accessibility compliance across devices and browsers."
+          },
+          {
+            "id": 2,
+            "title": "Integrate YC Data and Growth Metrics",
+            "description": "Fetch and display Y Combinator (YC) company data and relevant growth metrics within the Overview and Opportunities tabs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement backend and frontend logic to retrieve YC data and growth statistics, presenting them in a visually clear and informative manner.",
+            "status": "done",
+            "testStrategy": "Test data retrieval accuracy, loading times, and correct rendering of all YC and growth metric fields."
+          },
+          {
+            "id": 3,
+            "title": "Replace Mock Data with Real API Integration",
+            "description": "Remove all mock data from CompanyCard, CompanyProfileClient, and tab components, replacing with actual API calls to backend services.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update CompanyCard to fetch data from Supabase companies table. Modify CompanyProfileClient to retrieve real company data via API routes. Update OverviewTab to display actual YC data from the YC API service. Ensure all components handle loading states and API errors gracefully.",
+            "status": "done",
+            "testStrategy": "Test API calls return correct data, verify error handling for failed requests, validate loading states display properly, ensure data matches what's in Supabase and YC API."
+          },
+          {
+            "id": 4,
+            "title": "Implement Spearfish Score Breakdown and Explanations",
+            "description": "Display the real spearfish score from the scoring algorithm with a detailed breakdown and contextual explanations in the Technical tab.",
+            "dependencies": [
+              3
+            ],
+            "details": "Connect to the spearfish scoring algorithm service to fetch actual scores and breakdowns. Develop components to show score components, calculation logic from the algorithm, and explanatory tooltips or modals for user understanding. Replace mock score data with real algorithm outputs.",
+            "status": "done",
+            "testStrategy": "Validate score calculations match algorithm output, breakdown accuracy against scoring service, and clarity of explanations through user testing."
+          },
+          {
+            "id": 5,
+            "title": "Add GitHub Repository and Team Information",
+            "description": "Integrate GitHub repository data and detailed team member profiles into the Technical and Team tabs using real API data.",
+            "dependencies": [
+              3
+            ],
+            "details": "Connect to GitHub APIs and Supabase to display real repository stats and activity. Present structured team bios, roles, and relevant links from actual company data. Remove hardcoded team information and replace with dynamic data from backend services.",
+            "status": "done",
+            "testStrategy": "Check for correct API integration, data freshness from GitHub, completeness of team information from Supabase, and proper error handling for missing data."
+          },
+          {
+            "id": 6,
+            "title": "Implement Dynamic Content Loading, Caching, and Navigation Features",
+            "description": "Enable dynamic content loading with real data, caching for performance, breadcrumb navigation, social sharing, and the 'Why Spearfish This Company' section using actual insights.",
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Optimize data fetching from all backend services with caching strategies. Add breadcrumb trails for navigation, integrate social sharing buttons with real company data, and create a section highlighting key signals and opportunities based on actual scoring algorithm outputs and company data.",
+            "status": "done",
+            "testStrategy": "Test dynamic loading speed with real API calls, cache invalidation for updated data, navigation accuracy, social sharing with actual company info, and relevance of the 'Why Spearfish' content based on real scores."
+          }
+        ]
       },
       {
         "id": 7,
         "title": "GitHub API Integration for Technical Signals",
-        "description": "Integrate GitHub API to track repository activity and star growth for enhanced company scoring",
-        "details": "Build GitHub API integration to fetch repository data for AI companies. Track star counts, commit activity, and growth metrics. Implement monthly star growth calculation (>1K/month criteria). Create background jobs for daily GitHub data updates with proper rate limiting (5000 requests/hour). Store historical data for trend analysis. Handle API errors and missing repositories gracefully.",
-        "testStrategy": "Test GitHub API integration and rate limiting, validate star growth calculations, test background job execution, verify error handling for private/missing repositories",
-        "priority": "medium",
+        "description": "Integrate GitHub API to track repository activity and star growth for enhanced company scoring, replacing mock GitHub data in frontend",
+        "status": "in-progress",
         "dependencies": [
           4
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Build GitHub API integration to fetch repository data for AI companies. Track star counts, commit activity, and growth metrics. Implement monthly star growth calculation (>1K/month criteria). Create background jobs for daily GitHub data updates with proper rate limiting (5000 requests/hour). Store historical data for trend analysis in Supabase. Handle API errors and missing repositories gracefully. Update frontend components to use real GitHub data instead of mock values.",
+        "testStrategy": "Test GitHub API integration and rate limiting, validate star growth calculations, test background job execution, verify error handling for private/missing repositories, ensure frontend displays real GitHub metrics",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up GitHub API Client and Authentication",
+            "description": "Create GitHub API client with proper authentication and rate limiting handling.",
+            "dependencies": [],
+            "details": "Implement GitHub API client using Octokit or similar library. Set up authentication with GitHub API tokens. Implement rate limiting logic to stay within 5000 requests/hour limit. Create error handling for API failures.",
+            "status": "done",
+            "testStrategy": "Test API authentication, verify rate limiting works correctly, test error handling scenarios."
+          },
+          {
+            "id": 2,
+            "title": "Create Data Models and Database Schema for GitHub Data",
+            "description": "Design and implement Supabase tables for storing GitHub repository data and historical metrics.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create tables for repository information, star history, commit activity, and growth metrics. Design schema to support efficient queries and trend analysis. Set up indexes for performance.",
+            "status": "done",
+            "testStrategy": "Verify database schema creation, test data insertion and retrieval, validate query performance."
+          },
+          {
+            "id": 3,
+            "title": "Implement Repository Data Fetching and Storage",
+            "description": "Build service to fetch repository data from GitHub API and store in Supabase.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create functions to fetch repository stats, star counts, and commit activity. Implement data transformation and storage logic. Handle missing or private repositories gracefully.",
+            "status": "done",
+            "testStrategy": "Test data fetching accuracy, verify proper storage in database, test error handling for edge cases."
+          },
+          {
+            "id": 4,
+            "title": "Build Background Jobs for Daily Updates",
+            "description": "Create scheduled jobs to update GitHub data daily with proper queuing and error recovery.",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement background job system using Supabase Edge Functions or similar. Schedule daily updates for all tracked repositories. Add retry logic and error notifications. Implement job queuing to respect rate limits.",
+            "status": "done",
+            "testStrategy": "Test job scheduling and execution, verify rate limit compliance, test error recovery and retry logic."
+          },
+          {
+            "id": 5,
+            "title": "Replace Mock GitHub Data in Frontend Components",
+            "description": "Update all frontend components to fetch and display real GitHub data from the API service.",
+            "dependencies": [
+              3
+            ],
+            "details": "Modify CompanyCard to show real star counts and growth. Update Technical tab to display actual repository metrics. Remove all hardcoded GitHub data. Implement loading states and error handling in UI.",
+            "status": "in-progress",
+            "testStrategy": "Verify frontend displays correct GitHub data, test loading and error states, validate data freshness indicators."
+          }
+        ]
       },
       {
         "id": 8,
         "title": "Basic Artifact Suggestion System",
-        "description": "Create initial artifact suggestion engine with templates and static recommendations",
-        "details": "Build artifact suggestion system with predefined templates for different company types and user skill levels. Create artifact categories (code contributions, business analyses, technical demos). Implement basic matching algorithm between user skills and company needs. Store artifact templates with implementation guides and success metrics. Add artifact tracking and completion status for users.",
-        "testStrategy": "Test artifact suggestion accuracy for different user profiles, validate template completeness and clarity, test artifact tracking and completion workflows",
-        "priority": "medium",
+        "description": "Create initial artifact suggestion engine with templates and static recommendations, integrated with real company data",
+        "status": "pending",
         "dependencies": [
           6
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Build artifact suggestion system with predefined templates for different company types and user skill levels. Create artifact categories (code contributions, business analyses, technical demos). Implement basic matching algorithm between user skills and real company needs from Supabase data. Store artifact templates with implementation guides and success metrics. Add artifact tracking and completion status for users. Replace any mock artifact suggestions with data-driven recommendations based on actual company profiles.",
+        "testStrategy": "Test artifact suggestion accuracy using real company data, validate template completeness and clarity, test artifact tracking with actual user profiles, verify suggestions match real company needs",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Artifact Template System and Categories",
+            "description": "Create the structure for artifact templates and define artifact categories.",
+            "dependencies": [],
+            "details": "Design template schema for different artifact types. Define categories like code contributions, business analyses, and technical demos. Create template storage structure in Supabase.",
+            "status": "pending",
+            "testStrategy": "Verify template structure completeness, test category organization, validate database schema."
+          },
+          {
+            "id": 2,
+            "title": "Build Matching Algorithm Using Real Company Data",
+            "description": "Implement algorithm to match user skills with actual company needs from database.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create matching logic that uses real company data from Supabase including tech stack, growth stage, and needs. Consider user skills and preferences. Generate relevance scores for artifact suggestions.",
+            "status": "pending",
+            "testStrategy": "Test matching accuracy with various user profiles, verify algorithm uses real company data, validate relevance scoring."
+          },
+          {
+            "id": 3,
+            "title": "Implement Artifact Tracking and User Progress System",
+            "description": "Build system to track artifact creation and completion status for users.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create database tables for artifact tracking. Implement progress tracking logic. Build APIs for artifact status updates. Connect to user profiles and company campaigns.",
+            "status": "pending",
+            "testStrategy": "Test artifact creation and tracking, verify progress calculations, validate data persistence."
+          },
+          {
+            "id": 4,
+            "title": "Replace Mock Suggestions with Data-Driven Recommendations",
+            "description": "Update frontend to display artifact suggestions based on real company data and user profiles.",
+            "dependencies": [
+              3
+            ],
+            "details": "Remove any hardcoded artifact suggestions. Implement API calls to fetch personalized suggestions. Display suggestions with real company context and requirements. Add loading and error states.",
+            "status": "pending",
+            "testStrategy": "Verify suggestions are based on actual data, test personalization accuracy, validate UI updates correctly."
+          }
+        ]
       },
       {
         "id": 9,
         "title": "Email Template Generation System",
-        "description": "Implement email template system for cold outreach with personalization placeholders",
-        "details": "Create email template system with fill-in-the-blank style personalization. Build templates for different outreach scenarios (artifact presentation, expertise demonstration, value proposition). Implement template customization with company-specific data insertion. Add email preview functionality and basic formatting options. Store user email campaigns and track template usage patterns.",
-        "testStrategy": "Test email template generation with various company data, validate personalization accuracy, test email preview functionality, verify template variety and effectiveness",
-        "priority": "medium",
+        "description": "Implement email template system for cold outreach with personalization using real company and user data",
+        "status": "pending",
         "dependencies": [
           8
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "medium",
+        "details": "Create email template system with fill-in-the-blank style personalization using actual company data from Supabase and YC API. Build templates for different outreach scenarios (artifact presentation, expertise demonstration, value proposition). Implement template customization with real company-specific data insertion including actual metrics, team info, and spearfish scores. Add email preview functionality with live data and basic formatting options. Store user email campaigns and track template usage patterns. Replace any mock email content with dynamically generated content based on real data.",
+        "testStrategy": "Test email template generation with real company data from database, validate personalization accuracy using actual metrics, test email preview with live data, verify template variety and data integration",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Email Template System Architecture",
+            "description": "Create the structure for email templates with dynamic data placeholders.",
+            "dependencies": [],
+            "details": "Design template schema supporting variable insertion. Create placeholder system for company data, user info, and artifact details. Set up template storage and versioning.",
+            "status": "pending",
+            "testStrategy": "Verify template structure supports all data types, test placeholder system, validate storage design."
+          },
+          {
+            "id": 2,
+            "title": "Build Template Personalization Engine with Real Data",
+            "description": "Implement system to populate templates with actual company and user data.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create data fetching logic for company info from Supabase and YC API. Build template rendering engine that inserts real metrics, scores, and team data. Handle missing data gracefully.",
+            "status": "pending",
+            "testStrategy": "Test data insertion accuracy, verify all placeholders populate correctly, test error handling for missing data."
+          },
+          {
+            "id": 3,
+            "title": "Implement Email Preview and Campaign Tracking",
+            "description": "Build preview functionality and campaign management system.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create email preview component showing rendered templates with real data. Build campaign tracking tables in Supabase. Implement usage analytics and success tracking.",
+            "status": "pending",
+            "testStrategy": "Test preview accuracy with various templates, verify campaign tracking works, validate analytics data."
+          },
+          {
+            "id": 4,
+            "title": "Replace Mock Email Content with Dynamic Generation",
+            "description": "Update all email-related UI to use real data-driven content generation.",
+            "dependencies": [
+              3
+            ],
+            "details": "Remove any hardcoded email examples. Connect template system to real company profiles. Display personalized email previews using actual spearfish scores and company metrics. Add real-time template editing.",
+            "status": "pending",
+            "testStrategy": "Verify emails use real company data, test personalization with different companies, validate editing functionality."
+          }
+        ]
       },
       {
         "id": 10,
         "title": "User Dashboard and Progress Tracking",
-        "description": "Build user dashboard for managing spearfish campaigns, artifacts, and tracking progress",
-        "details": "Create user dashboard showing active spearfish campaigns, completed artifacts, and email outreach status. Implement progress tracking with visual indicators and success metrics. Add user profile management with skills, interests, and preferences. Build campaign history and analytics views. Implement data export functionality for user portfolios and campaign results.",
-        "testStrategy": "Test dashboard functionality and data accuracy, validate progress tracking calculations, test profile management and data persistence, verify analytics and reporting features",
-        "priority": "low",
+        "description": "Build user dashboard for managing spearfish campaigns, artifacts, and tracking progress with real data integration",
+        "status": "pending",
         "dependencies": [
           9
         ],
-        "status": "pending",
-        "subtasks": []
+        "priority": "low",
+        "details": "Create user dashboard showing active spearfish campaigns with real company data, completed artifacts linked to actual companies, and email outreach status from the database. Implement progress tracking with visual indicators based on real metrics and success data. Add user profile management with skills, interests, and preferences stored in Supabase. Build campaign history and analytics views using actual performance data. Implement data export functionality for user portfolios and campaign results. Replace all mock dashboard data with live queries to backend services.",
+        "testStrategy": "Test dashboard functionality with real user data, validate progress tracking calculations against actual metrics, test profile management with Supabase integration, verify analytics use real campaign data",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Dashboard Layout and Data Architecture",
+            "description": "Create dashboard UI structure and plan data fetching strategy.",
+            "dependencies": [],
+            "details": "Design responsive dashboard layout with sections for campaigns, artifacts, and analytics. Plan efficient data fetching from Supabase. Create loading state designs.",
+            "status": "pending",
+            "testStrategy": "Verify layout responsiveness, test data architecture efficiency, validate UX flow."
+          },
+          {
+            "id": 2,
+            "title": "Implement Campaign and Artifact Tracking with Real Data",
+            "description": "Build campaign management system connected to actual company and artifact data.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create APIs to fetch user campaigns with real company associations. Display artifact progress linked to actual companies. Show email outreach status from database. Implement real-time updates.",
+            "status": "pending",
+            "testStrategy": "Test campaign data accuracy, verify artifact tracking with real companies, validate real-time updates."
+          },
+          {
+            "id": 3,
+            "title": "Build Analytics and Progress Visualization",
+            "description": "Create analytics views using real performance metrics and campaign data.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement charts and visualizations for campaign performance. Calculate success metrics from actual user actions. Create progress indicators based on real completion data. Add filtering and date range selection.",
+            "status": "pending",
+            "testStrategy": "Verify analytics calculations accuracy, test visualization with various data sets, validate filtering functionality."
+          },
+          {
+            "id": 4,
+            "title": "Replace Mock Dashboard Data with Live Backend Queries",
+            "description": "Update entire dashboard to fetch and display real user and campaign data.",
+            "dependencies": [
+              3
+            ],
+            "details": "Remove all mock data from dashboard components. Implement API calls to fetch real user campaigns, artifacts, and metrics. Add proper loading states and error handling. Ensure data refreshes appropriately.",
+            "status": "pending",
+            "testStrategy": "Verify all data comes from backend services, test loading and error states, validate data freshness and accuracy."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-07-11T03:44:57.583Z",
-      "updated": "2025-07-14T19:27:44.099Z",
+      "updated": "2025-07-15T00:52:17.093Z",
       "description": "Tasks for master context"
     }
   }

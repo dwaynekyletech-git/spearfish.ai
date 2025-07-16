@@ -5,7 +5,7 @@
  */
 
 import { UserButton } from '@clerk/nextjs';
-import { CubeIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 export function NavigationHeader() {
   return (
@@ -14,7 +14,13 @@ export function NavigationHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
           <div className="flex items-center">
-            <CubeIcon className="h-8 w-8 text-purple-400 mr-3" />
+            <Image 
+              src="/logo.png" 
+              alt="Spearfish AI" 
+              width={32} 
+              height={32} 
+              className="mr-3"
+            />
             <h1 className="text-xl font-bold text-white">Spearfish AI</h1>
           </div>
           

@@ -65,6 +65,7 @@ export const CompanyDataSchema = z.object({
   tags: z.array(z.string()).default([]),
   regions: z.array(z.string()).default([]),
   is_hiring: z.boolean().default(false),
+  small_logo_thumb_url: z.string().optional(),
   github_repos: z.array(z.any()).default([]),
   huggingface_models: z.array(z.any()).default([]),
   ai_confidence_score: z.number().min(0).max(1).optional(),
@@ -231,17 +232,24 @@ export class SpearfishScoringAlgorithm {
 
   /**
    * Evaluate funding stage score (High weight)
+   * Uses company age as proxy for Series A readiness (18-30 months = likely Series A stage)
    */
   private evaluateFundingStage(company: CompanyData): number {
-    const description = `${company.one_liner || ''} ${company.long_description || ''}`.toLowerCase();
+    if (!company.launched_at) return 3; // Default for missing launch data
     
-    for (const keyword of this.config.SERIES_A_KEYWORDS) {
-      if (description.includes(keyword.toLowerCase())) {
-        return 10;
-      }
+    const launchDate = new Date(company.launched_at * 1000);
+    const monthsOld = (Date.now() - launchDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+    
+    // Series A readiness based on company age
+    if (monthsOld >= 18 && monthsOld <= 30) {
+      return 10; // Optimal Series A timing
+    } else if (monthsOld >= 12 && monthsOld <= 36) {
+      return 7;  // Close to Series A timing
+    } else if (monthsOld >= 6 && monthsOld <= 42) {
+      return 5;  // Possible Series A timing
     }
     
-    return 3; // Default score for unknown funding stage
+    return 3; // Too early or too late for typical Series A
   }
 
   /**

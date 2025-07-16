@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
           test: 'target-batches',
           data: {
             total_companies: targetCompanies.length,
-            batches: [...new Set(targetCompanies.map(c => c.batch))],
+            batches: Array.from(new Set(targetCompanies.map(c => c.batch))),
             sample_companies: targetCompanies.slice(0, 5).map(c => ({
               name: c.name,
               batch: c.batch,
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
           batch,
           data: {
             total_companies: batchCompanies.length,
-            industries: [...new Set(batchCompanies.map(c => c.industry))].slice(0, 10),
+            industries: Array.from(new Set(batchCompanies.map(c => c.industry))).slice(0, 10),
             sample_companies: batchCompanies.slice(0, 5).map(c => ({
               name: c.name,
               industry: c.industry,

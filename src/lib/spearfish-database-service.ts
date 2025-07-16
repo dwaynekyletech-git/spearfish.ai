@@ -208,7 +208,8 @@ export class SpearfishDatabaseService {
     } = {}
   ): Promise<CompanyData[]> {
     try {
-      let query = this.supabase
+      const supabase = await this.getSupabase();
+      let query = supabase
         .from('companies')
         .select(`
           id,
@@ -226,6 +227,7 @@ export class SpearfishDatabaseService {
           tags,
           regions,
           is_hiring,
+          small_logo_thumb_url,
           github_repos,
           huggingface_models,
           ai_confidence_score,
@@ -300,7 +302,8 @@ export class SpearfishDatabaseService {
     } = {}
   ): Promise<ScoreHistory[]> {
     try {
-      let query = this.supabase
+      const supabase = await this.getSupabase();
+      let query = supabase
         .from('score_history')
         .select('*')
         .eq('company_id', companyId)
@@ -343,7 +346,8 @@ export class SpearfishDatabaseService {
     } = {}
   ): Promise<CompanyData[]> {
     try {
-      let query = this.supabase
+      const supabase = await this.getSupabase();
+      let query = supabase
         .from('companies')
         .select(`
           id,
@@ -409,7 +413,8 @@ export class SpearfishDatabaseService {
     lastCalculated: Date | null;
   }> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      const { data, error } = await supabase
         .from('companies')
         .select('spearfish_score, updated_at')
         .eq('sync_status', 'synced');
@@ -420,9 +425,9 @@ export class SpearfishDatabaseService {
       }
 
       const totalCompanies = data.length;
-      const scoredCompanies = data.filter(c => c.spearfish_score !== null).length;
-      const scores = data.filter(c => c.spearfish_score !== null).map(c => c.spearfish_score);
-      const averageScore = scores.length > 0 ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+      const scoredCompanies = data.filter((c: any) => c.spearfish_score !== null).length;
+      const scores = data.filter((c: any) => c.spearfish_score !== null).map((c: any) => c.spearfish_score);
+      const averageScore = scores.length > 0 ? scores.reduce((sum: number, score: number) => sum + score, 0) / scores.length : 0;
       
       // Score distribution in ranges
       const scoreDistribution = {
@@ -433,7 +438,7 @@ export class SpearfishDatabaseService {
         '8-10': 0,
       };
 
-      scores.forEach(score => {
+      scores.forEach((score: number) => {
         if (score >= 0 && score < 2) scoreDistribution['0-2']++;
         else if (score >= 2 && score < 4) scoreDistribution['2-4']++;
         else if (score >= 4 && score < 6) scoreDistribution['4-6']++;
@@ -442,7 +447,7 @@ export class SpearfishDatabaseService {
       });
 
       const lastCalculated = data.length > 0 ? 
-        new Date(Math.max(...data.map(c => new Date(c.updated_at).getTime()))) : null;
+        new Date(Math.max(...data.map((c: any) => new Date(c.updated_at).getTime()))) : null;
 
       return {
         totalCompanies,
@@ -470,7 +475,8 @@ export class SpearfishDatabaseService {
     }
   ): Promise<void> {
     try {
-      await this.supabase
+      const supabase = await this.getSupabase();
+      await supabase
         .from('score_batch_logs')
         .insert({
           batch_id: batchId,

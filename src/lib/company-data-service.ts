@@ -7,6 +7,9 @@
 
 import { YCApiClient, YCCompany, createYCClient } from './yc-api';
 
+// Re-export types for use in other modules
+export type { YCCompany } from './yc-api';
+
 // =============================================================================
 // Enhanced Types and Interfaces
 // =============================================================================

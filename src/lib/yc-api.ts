@@ -19,20 +19,32 @@ export interface YCCompany {
   id: number;
   name: string;
   slug: string;
+  former_names: string[];
   website: string;
+  all_locations: string;
   one_liner: string;
   long_description: string;
   batch: string;
   status: 'Active' | 'Acquired' | 'Public' | 'Inactive';
   industry: string;
   subindustry?: string;
+  industries: string[];
   tags: string[];
+  tags_highlighted: string[];
   regions: string[];
   team_size: number;
   launched_at: number;
   small_logo_thumb_url?: string;
   isHiring?: boolean;
+  nonprofit: boolean;
+  top_company: boolean;
   stage?: string;
+  app_video_public: boolean;
+  demo_day_video_public: boolean;
+  app_answers: any;
+  question_answers: boolean;
+  url: string;
+  api: string;
 }
 
 export interface YCMeta {

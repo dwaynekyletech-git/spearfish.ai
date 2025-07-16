@@ -6,8 +6,10 @@
 
 'use client';
 
-import { ChevronRightIcon, MapPinIcon, UsersIcon, StarIcon, ArrowTrendingUpIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, MapPinIcon, UsersIcon, StarIcon, ArrowTrendingUpIcon, BuildingOfficeIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { CompanyData } from '@/lib/spearfish-scoring-service';
+import { useRouter } from 'next/navigation';
+import { useCompanyGitHubSummary } from '@/hooks/useCompanyGitHubData';
 
 interface CompanyCardProps {
   company: CompanyData & {
@@ -17,6 +19,13 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company }: CompanyCardProps) {
+  const router = useRouter();
+  const { summary: githubSummary, isLoading: githubLoading } = useCompanyGitHubSummary(company.id);
+
+  const handleClick = () => {
+    router.push(`/company/${company.id}`);
+  };
+
   const getScoreColor = (score: number | undefined) => {
     if (!score) return 'text-slate-400';
     if (score >= 8) return 'text-green-400';
@@ -40,33 +49,53 @@ export function CompanyCard({ company }: CompanyCardProps) {
   };
 
   const getTechTags = (company: CompanyData) => {
-    const tags: string[] = [];
-    
-    // Add some tech tags based on description
-    if (company.one_liner?.toLowerCase().includes('python')) tags.push('Python');
-    if (company.one_liner?.toLowerCase().includes('api')) tags.push('API');
-    if (company.one_liner?.toLowerCase().includes('ml') || company.one_liner?.toLowerCase().includes('machine learning')) tags.push('ML');
-    if (company.one_liner?.toLowerCase().includes('ai') || company.one_liner?.toLowerCase().includes('artificial intelligence')) tags.push('AI');
-    if (company.one_liner?.toLowerCase().includes('nlp')) tags.push('NLP');
-    if (company.one_liner?.toLowerCase().includes('computer vision')) tags.push('Computer Vision');
-    
-    // Add some default tags if none found
-    if (tags.length === 0) {
-      tags.push('AI', 'Tech');
+    // Use real company tags from API if available
+    if (company.tags && Array.isArray(company.tags) && company.tags.length > 0) {
+      return company.tags.slice(0, 4); // Limit to 4 tags
     }
     
-    return tags.slice(0, 4); // Limit to 4 tags
+    // Fallback: extract basic tags from description if no tags in database
+    const fallbackTags: string[] = [];
+    const description = company.one_liner?.toLowerCase() || '';
+    
+    if (description.includes('ai') || description.includes('artificial intelligence')) fallbackTags.push('AI');
+    if (description.includes('ml') || description.includes('machine learning')) fallbackTags.push('ML');
+    if (description.includes('nlp')) fallbackTags.push('NLP');
+    if (description.includes('api')) fallbackTags.push('API');
+    
+    // Final fallback if no tags found
+    if (fallbackTags.length === 0) {
+      fallbackTags.push('Tech');
+    }
+    
+    return fallbackTags.slice(0, 4);
   };
 
   return (
-    <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:bg-slate-800/70 transition-all duration-200 cursor-pointer group">
+    <div 
+      onClick={handleClick}
+      className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:bg-slate-800/70 transition-all duration-200 cursor-pointer group"
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           {/* Company Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">
+              <div className="h-12 w-12 rounded-lg flex items-center justify-center overflow-hidden bg-slate-700">
+                {company.small_logo_thumb_url ? (
+                  <img 
+                    src={company.small_logo_thumb_url} 
+                    alt={`${company.name} logo`}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      // Fallback to letter avatar if logo fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <span className={`text-white font-bold text-lg ${company.small_logo_thumb_url ? 'hidden' : ''}`}>
                   {company.name?.charAt(0).toUpperCase() || '?'}
                 </span>
               </div>
@@ -88,7 +117,7 @@ export function CompanyCard({ company }: CompanyCardProps) {
                     </span>
                   )}
                   {/* Growth Indicator */}
-                  {company.spearfish_score && company.spearfish_score >= 8 && (
+                  {company.spearfish_score >= 8 && (
                     <div className="flex items-center space-x-1 text-green-400">
                       <ArrowTrendingUpIcon className="h-3 w-3" />
                       <span className="text-xs">High Growth</span>
@@ -99,16 +128,16 @@ export function CompanyCard({ company }: CompanyCardProps) {
             </div>
             
             {/* Spearfish Score */}
-            <div className="text-right">
-              <div className="flex items-center space-x-1">
+            <div className="text-right min-w-[80px]">
+              <div className="flex items-center justify-end space-x-1">
                 <StarIcon className="h-4 w-4 text-yellow-400" />
                 <span className={`text-lg font-bold ${getScoreColor(company.spearfish_score)}`}>
-                  {company.spearfish_score?.toFixed(1) || '—'}
+                  {company.spearfish_score?.toFixed(1) || '0.0'}
                 </span>
               </div>
-              <span className="text-xs text-slate-400">
+              <div className="text-xs text-slate-400">
                 {getScoreLabel(company.spearfish_score)}
-              </span>
+              </div>
             </div>
           </div>
 
@@ -131,11 +160,37 @@ export function CompanyCard({ company }: CompanyCardProps) {
               <span>{formatTeamSize(company.team_size)}</span>
             </div>
             
-            {company.regions && company.regions.length > 0 && (
+            {company.regions && Array.isArray(company.regions) && company.regions.length > 0 && company.regions[0] && (
               <div className="flex items-center space-x-1">
                 <MapPinIcon className="h-4 w-4" />
                 <span>{company.regions[0]}</span>
               </div>
+            )}
+            
+            {/* GitHub Stats */}
+            {githubSummary && !githubLoading && (
+              <>
+                {githubSummary.total_stars > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <StarIcon className="h-4 w-4 text-yellow-400" />
+                    <span>{githubSummary.total_stars.toLocaleString()} stars</span>
+                  </div>
+                )}
+                
+                {githubSummary.monthly_star_growth > 100 && (
+                  <div className="flex items-center space-x-1 text-green-400">
+                    <ArrowTrendingUpIcon className="h-4 w-4" />
+                    <span>+{Math.round(githubSummary.monthly_star_growth)}/mo</span>
+                  </div>
+                )}
+                
+                {githubSummary.primary_repository?.language && (
+                  <div className="flex items-center space-x-1">
+                    <CodeBracketIcon className="h-4 w-4" />
+                    <span>{githubSummary.primary_repository.language}</span>
+                  </div>
+                )}
+              </>
             )}
             
             {company.is_hiring && (

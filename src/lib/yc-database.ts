@@ -18,7 +18,9 @@ export interface DatabaseCompany {
   yc_id: string | null;
   name: string;
   slug: string | null;
+  former_names: string[];
   website_url: string | null;
+  all_locations: string | null;
   one_liner: string | null;
   long_description: string | null;
   batch: string | null;
@@ -26,12 +28,20 @@ export interface DatabaseCompany {
   status: 'Active' | 'Acquired' | 'Public' | 'Inactive';
   industry: string | null;
   subindustry: string | null;
+  industries: string[];
   tags: string[];
+  tags_highlighted: string[];
   regions: string[];
   team_size: number | null;
   launched_at: number | null;
   small_logo_thumb_url: string | null;
   is_hiring: boolean;
+  nonprofit: boolean;
+  top_company: boolean;
+  app_video_public: boolean;
+  demo_day_video_public: boolean;
+  yc_url: string | null;
+  yc_api_url: string | null;
   is_ai_related: boolean;
   ai_confidence_score: number | null;
   ai_classification_date: string | null;
@@ -128,19 +138,30 @@ export class YCDatabaseService {
         p_yc_api_id: company.id,
         p_name: company.name,
         p_slug: company.slug,
+        p_former_names: JSON.stringify(company.former_names || []),
         p_website_url: company.website || null,
+        p_all_locations: company.all_locations || null,
         p_one_liner: company.one_liner || null,
         p_long_description: company.long_description || null,
         p_batch: company.batch,
+        p_stage: company.stage || null,
         p_status: company.status,
         p_industry: company.industry || null,
         p_subindustry: company.subindustry || null,
+        p_industries: JSON.stringify(company.industries || []),
         p_tags: JSON.stringify(company.tags || []),
+        p_tags_highlighted: JSON.stringify(company.tags_highlighted || []),
         p_regions: JSON.stringify(company.regions || []),
         p_team_size: company.team_size || null,
         p_launched_at: company.launched_at || null,
         p_small_logo_thumb_url: company.small_logo_thumb_url || null,
         p_is_hiring: company.isHiring || false,
+        p_nonprofit: company.nonprofit || false,
+        p_top_company: company.top_company || false,
+        p_app_video_public: company.app_video_public || false,
+        p_demo_day_video_public: company.demo_day_video_public || false,
+        p_yc_url: company.url || null,
+        p_yc_api_url: company.api || null,
         p_is_ai_related: 'isAIRelated' in company ? company.isAIRelated : false,
         p_ai_confidence_score: 'aiConfidence' in company ? company.aiConfidence : null
       });
@@ -599,19 +620,30 @@ export function convertYCCompanyToDatabase(company: YCCompany): Partial<Database
     yc_api_id: company.id,
     name: company.name,
     slug: company.slug,
+    former_names: company.former_names || [],
     website_url: company.website,
+    all_locations: company.all_locations,
     one_liner: company.one_liner,
     long_description: company.long_description,
     batch: company.batch,
+    stage: company.stage,
     status: company.status,
     industry: company.industry,
     subindustry: company.subindustry,
+    industries: company.industries || [],
     tags: company.tags || [],
+    tags_highlighted: company.tags_highlighted || [],
     regions: company.regions || [],
     team_size: company.team_size,
     launched_at: company.launched_at,
     small_logo_thumb_url: company.small_logo_thumb_url,
     is_hiring: company.isHiring || false,
+    nonprofit: company.nonprofit || false,
+    top_company: company.top_company || false,
+    app_video_public: company.app_video_public || false,
+    demo_day_video_public: company.demo_day_video_public || false,
+    yc_url: company.url,
+    yc_api_url: company.api,
     sync_status: 'synced'
   };
 }

@@ -8,6 +8,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
+// Type-safe environment variables
+const SUPABASE_URL = supabaseUrl as string
+const SUPABASE_ANON_KEY = supabaseAnonKey as string
+
 /**
  * Custom hook to create a Supabase client with Clerk authentication
  * This client automatically includes the Clerk JWT token for authenticated requests
@@ -15,7 +19,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export function useSupabaseClient() {
   const { getToken, isLoaded, userId } = useAuth()
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
       // Custom fetch function that includes the Clerk token
       fetch: async (url, options = {}) => {
@@ -57,7 +61,7 @@ export function useSupabaseClient() {
  * This is a synchronous version that can be used outside of React hooks
  */
 export function createClerkSupabaseClient() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
       fetch: async (url, options = {}) => {
         // Check if Clerk is available on window

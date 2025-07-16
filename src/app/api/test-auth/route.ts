@@ -12,7 +12,7 @@ export async function GET() {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: 'Auth check failed', details: error.message },
+      { error: 'Auth check failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
