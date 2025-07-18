@@ -49,15 +49,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Associate repository with company
-    const association = await githubStorageService.associateRepositoryWithCompany(
-      result.repositoryId!,
-      companyId,
-      {
-        isPrimary: true,
-        confidenceScore: 1.0,
-        discoveryMethod: 'manual',
-      }
-    );
+    const association = await githubStorageService.associateRepositoryWithCompany({
+      company_id: companyId,
+      repository_id: result.data?.repository.id!,
+      is_primary: true,
+      confidence_score: 1.0,
+      discovery_method: 'manual',
+    });
 
     if (!association.success) {
       return NextResponse.json({
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        repositoryId: result.repositoryId,
+        repositoryId: result.data?.repository.id,
         repository: `${owner}/${repo}`,
         companyId,
         message: 'Repository synced successfully',

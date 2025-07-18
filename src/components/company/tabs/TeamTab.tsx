@@ -524,7 +524,7 @@ export function TeamTab({ company }: TeamTabProps) {
             </div>
             <h4 className="text-lg font-medium text-white mb-2">No Team Data Available</h4>
             <p className="text-slate-400 max-w-md mx-auto mb-4">
-              Team member information hasn't been collected yet. You can manually research or trigger data collection.
+              Team member information hasn&apos;t been collected yet. You can manually research or trigger data collection.
             </p>
             
             {/* Research Suggestions */}
@@ -533,7 +533,7 @@ export function TeamTab({ company }: TeamTabProps) {
               <div className="text-slate-400 text-sm space-y-1">
                 <p>• Check LinkedIn for company employees</p>
                 <p>• Look at GitHub contributors for technical roles</p>
-                <p>• Visit company website "About" or "Team" pages</p>
+                <p>• Visit company website &quot;About&quot; or &quot;Team&quot; pages</p>
                 <p>• Search AngelList/Wellfound for founder information</p>
               </div>
             </div>

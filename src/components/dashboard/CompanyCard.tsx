@@ -83,6 +83,7 @@ export function CompanyCard({ company }: CompanyCardProps) {
             <div className="flex items-center space-x-3">
               <div className="h-12 w-12 rounded-lg flex items-center justify-center overflow-hidden bg-slate-700">
                 {company.small_logo_thumb_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={company.small_logo_thumb_url} 
                     alt={`${company.name} logo`}
@@ -117,7 +118,7 @@ export function CompanyCard({ company }: CompanyCardProps) {
                     </span>
                   )}
                   {/* Growth Indicator */}
-                  {company.spearfish_score >= 8 && (
+                  {(company.spearfish_score ?? 0) >= 8 && (
                     <div className="flex items-center space-x-1 text-green-400">
                       <ArrowTrendingUpIcon className="h-3 w-3" />
                       <span className="text-xs">High Growth</span>

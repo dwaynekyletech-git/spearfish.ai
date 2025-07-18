@@ -17,6 +17,7 @@ const tabs = [
   { id: 'team', label: 'Team', icon: '👥' },
   { id: 'spearfish-calc', label: 'Spearfish Calc', icon: '🎯' },
   { id: 'opportunities', label: 'Opportunities', icon: '🚀' },
+  { id: 'spear-this', label: 'Spear This!', icon: '🏹' },
 ] as const;
 
 export function CompanyTabs({ activeTab, onTabChange }: CompanyTabsProps) {

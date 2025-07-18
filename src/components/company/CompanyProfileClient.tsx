@@ -13,6 +13,7 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { TechnicalTab } from './tabs/TechnicalTab';
 import { TeamTab } from './tabs/TeamTab';
 import { SpearfishCalcTab } from './tabs/SpearfishCalcTab';
+import { SpearThisTab } from './tabs/SpearThisTab';
 import { OpportunitiesTab } from './tabs/OpportunitiesTab';
 import { Breadcrumb, useCompanyBreadcrumbs } from '../ui/Breadcrumb';
 import { useCompanyData } from '../../hooks/useCompanyData';
@@ -21,7 +22,7 @@ interface CompanyProfileClientProps {
   companyId: string;
 }
 
-export type TabType = 'overview' | 'technical' | 'team' | 'spearfish-calc' | 'opportunities';
+export type TabType = 'overview' | 'technical' | 'team' | 'spearfish-calc' | 'spear-this' | 'opportunities';
 
 interface ApiResponse {
   success: boolean;
@@ -144,6 +145,8 @@ export function CompanyProfileClient({ companyId }: CompanyProfileClientProps) {
         return <TeamTab company={company} />;
       case 'spearfish-calc':
         return <SpearfishCalcTab company={company} />;
+      case 'spear-this':
+        return <SpearThisTab company={company} />;
       case 'opportunities':
         return <OpportunitiesTab company={company} />;
       default:

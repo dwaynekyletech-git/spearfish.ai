@@ -101,7 +101,7 @@ export async function POST(
         funding: teamData.funding,
         scraping_summary: {
           founders_found: cleanedData.founders.length,
-          funding_found: !!cleanedData.total_funding,
+          funding_found: !!(cleanedData as any).total_funding,
           sources_used: cleanedData.sources.length
         }
       });

@@ -25,15 +25,15 @@ export async function POST(request: NextRequest) {
         name: 'Buddha Chaudhuri',
         title: 'Co-Founder',
         bio: 'Co-founder of Keylika, focused on drug discovery and computational chemistry.',
-        linkedin_url: null,
-        twitter_url: null
+        linkedin_url: undefined,
+        twitter_url: undefined
       },
       {
         name: 'Frederik Ceyssens',
         title: 'Co-Founder',
         bio: 'Co-founder of Keylika, expertise in machine learning and pharmaceutical research.',
-        linkedin_url: null,
-        twitter_url: null
+        linkedin_url: undefined,
+        twitter_url: undefined
       }
     ];
     

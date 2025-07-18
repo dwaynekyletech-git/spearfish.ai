@@ -192,9 +192,9 @@ export async function GET(request: NextRequest) {
           const companyForScoring = {
             ...company,
             tags: Array.isArray(company.tags) ? company.tags : 
-                  typeof company.tags === 'string' ? company.tags.split(',').filter(t => t.trim()) : [],
+                  typeof company.tags === 'string' ? (company.tags as string).split(',').filter(t => t.trim()) : [],
             regions: Array.isArray(company.regions) ? company.regions : 
-                     typeof company.regions === 'string' ? company.regions.split(',').filter(r => r.trim()) : [],
+                     typeof company.regions === 'string' ? (company.regions as string).split(',').filter(r => r.trim()) : [],
             github_repos: company.github_repos || [],
             huggingface_models: company.huggingface_models || [],
             spearfish_score: undefined, // Remove null values for scoring

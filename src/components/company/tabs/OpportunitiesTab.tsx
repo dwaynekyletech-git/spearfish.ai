@@ -80,7 +80,7 @@ export function OpportunitiesTab({ company }: OpportunitiesTabProps) {
       });
     }
     
-    if (company.tags && company.tags.some((tag: string) => ['AI', 'ML', 'Machine Learning', 'Artificial Intelligence'].includes(tag))) {
+    if (company.tags && Array.isArray(company.tags) && company.tags.some((tag: string) => ['AI', 'ML', 'Machine Learning', 'Artificial Intelligence'].includes(tag))) {
       reasons.push({
         icon: '🤖',
         title: 'AI-First Company',
@@ -228,7 +228,7 @@ export function OpportunitiesTab({ company }: OpportunitiesTabProps) {
             </div>
             <h4 className="text-lg font-medium text-white mb-2">Not Currently Hiring</h4>
             <p className="text-slate-400 max-w-md mx-auto mb-4">
-              This company isn't actively hiring right now, but that could change quickly in the startup world.
+              This company isn&apos;t actively hiring right now, but that could change quickly in the startup world.
             </p>
             <div className="text-slate-400 text-sm">
               <p><strong>Stay connected:</strong> Follow their progress and be ready when opportunities arise.</p>

@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface CacheEntry {
   data: any;
@@ -35,7 +35,7 @@ export function useCompanyData(companyId: string): CompanyDataState {
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchCompanyData = async (useCache = true): Promise<void> => {
+  const fetchCompanyData = useCallback(async (useCache = true): Promise<void> => {
     const cacheKey = `company:${companyId}`;
     const cachedEntry = cache.get(cacheKey);
     const now = Date.now();
@@ -139,7 +139,7 @@ export function useCompanyData(companyId: string): CompanyDataState {
         setIsLoading(false);
       }
     }
-  };
+  }, [companyId]);
 
   const refetch = async (): Promise<void> => {
     setIsStale(false);
@@ -156,7 +156,7 @@ export function useCompanyData(companyId: string): CompanyDataState {
         abortControllerRef.current.abort();
       }
     };
-  }, [companyId]);
+  }, [companyId, fetchCompanyData]);
 
   useEffect(() => {
     return () => {
@@ -183,7 +183,7 @@ export function useCompaniesData(params: any) {
   const [hasMore, setHasMore] = useState(true);
   const isMountedRef = useRef(true);
 
-  const fetchCompanies = async (): Promise<void> => {
+  const fetchCompanies = useCallback(async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -216,7 +216,7 @@ export function useCompaniesData(params: any) {
         setIsLoading(false);
       }
     }
-  };
+  }, [params]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -225,7 +225,7 @@ export function useCompaniesData(params: any) {
     return () => {
       isMountedRef.current = false;
     };
-  }, [JSON.stringify(params)]);
+  }, [params, fetchCompanies]);
 
   return {
     data,

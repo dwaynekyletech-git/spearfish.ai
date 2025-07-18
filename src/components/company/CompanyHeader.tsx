@@ -62,6 +62,7 @@ export function CompanyHeader({ company }: CompanyHeaderProps) {
             <div className="flex-shrink-0">
               <div className="h-20 w-20 rounded-xl flex items-center justify-center overflow-hidden bg-slate-700">
                 {company.small_logo_thumb_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img 
                     src={company.small_logo_thumb_url} 
                     alt={`${company.name} logo`}

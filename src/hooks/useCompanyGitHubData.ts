@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface GitHubRepository {
   id: string;
@@ -87,7 +87,7 @@ export function useCompanyGitHubData(companyId: string): UseCompanyGitHubDataSta
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchGitHubData = async (): Promise<void> => {
+  const fetchGitHubData = useCallback(async (): Promise<void> => {
     const cacheKey = `github:${companyId}`;
     const cachedEntry = cache.get(cacheKey);
     const now = Date.now();
@@ -159,7 +159,7 @@ export function useCompanyGitHubData(companyId: string): UseCompanyGitHubDataSta
         setIsLoading(false);
       }
     }
-  };
+  }, [companyId]);
 
   const refetch = async (): Promise<void> => {
     // Clear cache for this company
@@ -177,7 +177,7 @@ export function useCompanyGitHubData(companyId: string): UseCompanyGitHubDataSta
         abortControllerRef.current.abort();
       }
     };
-  }, [companyId]);
+  }, [companyId, fetchGitHubData]);
 
   useEffect(() => {
     return () => {

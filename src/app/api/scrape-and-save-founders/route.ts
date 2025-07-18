@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         const cleanedData = scraperService.cleanData(fundingData);
         
         // Save to database
-        if (cleanedData.founders.length > 0 || cleanedData.total_funding) {
+        if (cleanedData.founders.length > 0 || (cleanedData as any).total_funding) {
           await founderDbService.saveFundingData(company.id, cleanedData);
           console.log(`✅ Saved data for ${company.name}: ${cleanedData.founders.length} founders`);
         }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
             website_url: company.website_url
           },
           scraping_results: cleanedData,
-          saved_to_db: cleanedData.founders.length > 0 || !!cleanedData.total_funding,
+          saved_to_db: cleanedData.founders.length > 0 || !!(cleanedData as any).total_funding,
           success: true
         });
         

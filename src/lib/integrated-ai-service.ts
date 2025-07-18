@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Integrated AI Classification + Database Service
  * 

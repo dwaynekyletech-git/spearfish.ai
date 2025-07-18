@@ -471,7 +471,7 @@
         "id": 7,
         "title": "GitHub API Integration for Technical Signals",
         "description": "Integrate GitHub API to track repository activity and star growth for enhanced company scoring, replacing mock GitHub data in frontend",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           4
         ],
@@ -529,78 +529,125 @@
               3
             ],
             "details": "Modify CompanyCard to show real star counts and growth. Update Technical tab to display actual repository metrics. Remove all hardcoded GitHub data. Implement loading states and error handling in UI.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Verify frontend displays correct GitHub data, test loading and error states, validate data freshness indicators."
           }
         ]
       },
       {
         "id": 8,
-        "title": "Basic Artifact Suggestion System",
-        "description": "Create initial artifact suggestion engine with templates and static recommendations, integrated with real company data",
+        "title": "Implement Deep Research for Company",
+        "description": "The deep research is looking for actionable intelligence that enables value-first outreach. It analyzes the company's technical challenges (GitHub issues, performance bottlenecks, scaling problems), recent activities (product launches, blog posts, hiring patterns), team dynamics (key decision makers, their interests and pain points), and business context (growth stage pressures, competitive positioning, immediate needs). The goal is to identify specific problems the company is facing that the user can solve through artifacts - whether that's fixing a bug in their open-source repo, building a dashboard for their data needs, optimizing their ML pipeline, or creating a market analysis for their expansion plans. This research transforms the user from \"another job applicant\" into \"someone who understands our problems and has already started solving them.\"",
         "status": "pending",
         "dependencies": [
           6
         ],
         "priority": "medium",
-        "details": "Build artifact suggestion system with predefined templates for different company types and user skill levels. Create artifact categories (code contributions, business analyses, technical demos). Implement basic matching algorithm between user skills and real company needs from Supabase data. Store artifact templates with implementation guides and success metrics. Add artifact tracking and completion status for users. Replace any mock artifact suggestions with data-driven recommendations based on actual company profiles.",
-        "testStrategy": "Test artifact suggestion accuracy using real company data, validate template completeness and clarity, test artifact tracking with actual user profiles, verify suggestions match real company needs",
+        "details": "Build comprehensive deep research system that analyzes multiple data sources to identify actionable intelligence about target companies. Implement GitHub issue analysis to find technical challenges and pain points. Create web scraping and API integration to track recent company activities including product launches, blog posts, and hiring patterns. Build team analysis system to identify key decision makers and their professional interests. Implement business context analysis including growth stage assessment, competitive positioning, and immediate needs identification. Create intelligence synthesis system that connects identified problems to potential user solutions and artifact opportunities.",
+        "testStrategy": "Test deep research accuracy with real company data, validate problem identification against actual company challenges, test intelligence synthesis produces actionable insights, verify research transforms generic outreach into targeted value propositions",
         "subtasks": [
           {
-            "id": 1,
-            "title": "Design Artifact Template System and Categories",
-            "description": "Create the structure for artifact templates and define artifact categories.",
-            "dependencies": [],
-            "details": "Design template schema for different artifact types. Define categories like code contributions, business analyses, and technical demos. Create template storage structure in Supabase.",
+            "id": 6,
+            "title": "Create Spear This! Tab",
+            "description": "Create a new dedicated tab called 'Spear This!' with deep research functionality and results display.",
+            "status": "done",
+            "dependencies": [
+              5
+            ],
+            "details": "Create a new SpearThisTab component as a dedicated tab for all deep research functionality. Integrate the tab into the company page's navigation system alongside Overview, Team, and Opportunities tabs. Add 'Start Deep Research' button with research type selection options. Create ResearchProgress component for real-time status updates with progress bar. Build ResearchResults component to display categorized findings with citations. Add research history section with ability to view previous sessions. Implement research freshness indicators and refresh functionality. Ensure the tab follows existing tab patterns for consistency and includes appropriate iconography to indicate its research/analysis purpose.\n<info added on 2025-07-16T21:57:22.122Z>\nThe UI implementation will be restructured to create a new dedicated tab called \"Spear This!\" instead of modifying the existing OpportunitiesTab. This tab will serve as the central hub for all deep research functionality. The implementation involves creating a new SpearThisTab component that will be integrated into the company page's tab navigation system alongside Overview, Team, and Opportunities tabs. The SpearThisTab will house all research-related components including the research initiation controls, progress tracking, results display, and historical research data. The tab's navigation entry should be prominently placed and include appropriate iconography to indicate its research/analysis purpose. The component structure will follow the existing tab patterns in the codebase for consistency.\n</info added on 2025-07-16T21:57:22.122Z>",
+            "testStrategy": "Test UI components render correctly, verify real-time updates work, test user interactions and error states, validate responsive design across devices."
+          },
+          {
+            "id": 7,
+            "title": "Implement Caching and Optimization",
+            "description": "Build caching system to optimize API usage and improve performance while maintaining data freshness.",
             "status": "pending",
-            "testStrategy": "Verify template structure completeness, test category organization, validate database schema."
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Create research result caching with 7-14 day expiration based on data type. Implement incremental update mechanism for recent company activities. Add cost monitoring with budget alerts and usage analytics. Build intelligent cache invalidation based on company profile updates. Create user-triggered refresh with cost warnings.",
+            "testStrategy": "Test cache hit/miss scenarios, verify expiration logic works correctly, test incremental updates accuracy, validate cost tracking and alerts."
+          },
+          {
+            "id": 8,
+            "title": "Add Error Handling and Resilience",
+            "description": "Implement comprehensive error handling and recovery mechanisms for production reliability.",
+            "status": "pending",
+            "dependencies": [
+              4,
+              5,
+              6
+            ],
+            "details": "Implement retry logic with exponential backoff for transient failures. Create fallback strategies when Perplexity API is unavailable. Add session recovery to resume interrupted research. Build comprehensive error logging and monitoring. Implement graceful degradation with partial results display.",
+            "testStrategy": "Test various failure scenarios, verify retry mechanisms work correctly, test session recovery after interruptions, validate error messages are user-friendly."
+          },
+          {
+            "id": 1,
+            "title": "Create Database Schema for Research Sessions",
+            "description": "Design and implement database tables for storing company research sessions and findings from Perplexity API.",
+            "dependencies": [],
+            "details": "Create migration files for company_research_sessions table with fields for session tracking, status, and cost monitoring. Create research_findings table to store structured research results with citations. Add proper indexes for performance and implement RLS policies for secure access control.\n<info added on 2025-07-16T20:51:05.803Z>\nMigration successfully implemented in 20250116_create_research_sessions_tables.sql. The implementation includes company_research_sessions table for tracking API calls with comprehensive cost monitoring (per-call costs, cumulative costs), status tracking (pending/processing/completed/failed), and metadata storage. The research_findings table stores structured results with full citation support, confidence scoring, and verification timestamps. Both tables feature optimized indexes on company_id, created_at, and status fields for efficient querying. Row Level Security policies ensure data isolation between organizations with SELECT/INSERT/UPDATE/DELETE permissions properly scoped to organization members. Field validation includes CHECK constraints for valid status values, positive cost amounts, and confidence scores between 0-1. The schema architecture supports extensibility for multiple research types (market analysis, competitor research, technology stack discovery) through the research_type enum and flexible JSONB metadata fields.\n</info added on 2025-07-16T20:51:05.803Z>\n<info added on 2025-07-16T21:20:37.041Z>\nFixed migration conflict by creating safe migration file (20250116_create_research_sessions_tables_safe.sql) that uses CREATE TABLE IF NOT EXISTS and adds missing columns conditionally. The new migration handles existing tables gracefully, adds missing columns only if they don't exist, creates indexes safely, and sets up RLS policies correctly. This resolves the 'relation already exists' error and ensures the schema is properly updated regardless of existing state.\n</info added on 2025-07-16T21:20:37.041Z>",
+            "status": "done",
+            "testStrategy": "Test table creation with migration rollback capability, verify RLS policies work correctly, validate foreign key relationships and constraints."
           },
           {
             "id": 2,
-            "title": "Build Matching Algorithm Using Real Company Data",
-            "description": "Implement algorithm to match user skills with actual company needs from database.",
-            "dependencies": [
-              1
-            ],
-            "details": "Create matching logic that uses real company data from Supabase including tech stack, growth stage, and needs. Consider user skills and preferences. Generate relevance scores for artifact suggestions.",
-            "status": "pending",
-            "testStrategy": "Test matching accuracy with various user profiles, verify algorithm uses real company data, validate relevance scoring."
+            "title": "Set Up Perplexity API Integration",
+            "description": "Create Perplexity service with Sonar Deep Research API integration and authentication.",
+            "dependencies": [],
+            "details": "Install Perplexity SDK dependencies (@perplexity-ai/sdk or fetch-based implementation). Create perplexity-research-service.ts with API client setup and configuration. Add PERPLEXITY_API_KEY to environment variables. Implement error handling, rate limiting, and retry logic for API calls.\n<info added on 2025-07-16T21:00:58.195Z>\nSuccessfully integrated Perplexity API with sonar-pro model configuration. The implementation includes a comprehensive service architecture featuring rate limiting (3 requests per second), exponential backoff retry logic, and robust error handling. Created specialized research methods: performDeepResearch for comprehensive company analysis, performTechnicalAnalysis for technology stack discovery, performCompetitiveAnalysis for competitor insights, and performMarketAnalysis for industry trends. Added cost tracking functionality to monitor API usage and implemented health check endpoints to verify service availability. All unit tests are passing and the API is responding normally in both development and production environments.\n</info added on 2025-07-16T21:00:58.195Z>",
+            "status": "done",
+            "testStrategy": "Test API connection with sample queries, verify authentication works, test error handling for various failure scenarios, validate rate limiting behavior."
           },
           {
             "id": 3,
-            "title": "Implement Artifact Tracking and User Progress System",
-            "description": "Build system to track artifact creation and completion status for users.",
+            "title": "Build Research Query Templates",
+            "description": "Create structured query templates for different types of company intelligence gathering.",
             "dependencies": [
               2
             ],
-            "details": "Create database tables for artifact tracking. Implement progress tracking logic. Build APIs for artifact status updates. Connect to user profiles and company campaigns.",
-            "status": "pending",
-            "testStrategy": "Test artifact creation and tracking, verify progress calculations, validate data persistence."
+            "details": "Design technical intelligence queries to find GitHub issues, performance bottlenecks, and scaling problems. Create business context queries for product launches, funding, and hiring patterns. Build team dynamics queries to identify key decision makers and their pain points. Develop competitive analysis queries for market positioning insights.\n<info added on 2025-07-16T21:07:18.299Z>\nCreated comprehensive research query template system with 9 specialized templates organized into 6 categories:\n\nTechnical Intelligence Templates:\n- Technical challenges template for identifying GitHub issues, performance problems, and scaling bottlenecks\n- Technology stack analysis template for understanding infrastructure and architectural decisions\n\nBusiness Context Templates:\n- Business challenges template for uncovering operational pain points and growth obstacles\n- Market position template for competitive landscape analysis\n- Funding & growth template for investment history and expansion patterns\n\nTeam & Decision Maker Templates:\n- Key decision makers template for identifying CTOs, VPs of Engineering, and technical leadership\n- Team dynamics template for understanding organizational structure and hiring patterns\n\nCompetitive & Market Templates:\n- Competitor analysis template for direct and indirect competition insights\n- Industry trends template for market direction and emerging technologies\n\nTemplate Processing Features:\n- Dynamic variable substitution system supporting company name, domain, industry, and custom parameters\n- Built-in validation for required variables and template structure\n- Customization options for search domains, date ranges, and result formatting\n- Recency filters with support for past week/month/quarter/year timeframes\n- Expected output specifications for each template type\n\nHigh-priority templates (technical challenges, business challenges, key decision makers) fully implemented and tested with live variable substitution. System successfully processes templates with proper parameter replacement and generates targeted research queries for Perplexity API integration.\n</info added on 2025-07-16T21:07:18.299Z>",
+            "status": "done",
+            "testStrategy": "Test query templates with sample companies, verify query outputs contain expected information types, validate citation quality and relevance."
           },
           {
             "id": 4,
-            "title": "Replace Mock Suggestions with Data-Driven Recommendations",
-            "description": "Update frontend to display artifact suggestions based on real company data and user profiles.",
+            "title": "Implement Core Research Service",
+            "description": "Build the main research orchestration service that coordinates Perplexity API calls and manages research sessions.",
             "dependencies": [
+              1,
+              2,
               3
             ],
-            "details": "Remove any hardcoded artifact suggestions. Implement API calls to fetch personalized suggestions. Display suggestions with real company context and requirements. Add loading and error states.",
-            "status": "pending",
-            "testStrategy": "Verify suggestions are based on actual data, test personalization accuracy, validate UI updates correctly."
+            "details": "Create methods for starting research sessions with progress tracking. Implement parallel research execution for different intelligence types. Build cost calculation and optimization logic to manage API expenses. Add research result synthesis to combine findings from multiple queries. Implement session state management and recovery mechanisms.\n<info added on 2025-07-16T21:18:31.133Z>\nThe core research service implementation is complete with full session orchestration capabilities. The service architecture includes a ResearchSession class that manages unique session IDs and tracks progress across multiple parallel queries. Progress tracking provides real-time percentage updates and status messages to the UI through callback mechanisms.\n\nParallel query execution is managed through a queue system with configurable concurrency limits, allowing simultaneous research across different intelligence types while preventing API rate limit issues. The cost calculation system tracks token usage and API calls, providing real-time cost estimates and implementing optimization strategies to stay within budget constraints.\n\nResult synthesis combines findings from multiple Perplexity queries into cohesive, actionable insights. The synthesis process identifies patterns across different intelligence types, extracts key opportunities, and generates executive summaries with specific recommended next steps. Each finding is categorized by impact level and includes supporting evidence from the research.\n\nSession state is persisted to the database, enabling recovery from interruptions and allowing users to resume research sessions. The implementation includes comprehensive error handling with retry logic for transient failures, graceful degradation when specific queries fail, and detailed error reporting for debugging.\n\nThe service successfully integrates with the Perplexity API through the PerplexityResearchService class, processing raw API responses into structured CompanyIntelligence objects. The implementation follows TypeScript best practices with full type safety and includes extensive logging for monitoring and debugging purposes.\n</info added on 2025-07-16T21:18:31.133Z>",
+            "status": "done",
+            "testStrategy": "Test research orchestration with multiple query types, verify progress tracking updates correctly, test cost calculations accuracy, validate session recovery after failures."
+          },
+          {
+            "id": 5,
+            "title": "Create Research API Endpoints",
+            "description": "Build REST API endpoints for initiating and managing company research sessions.",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement POST /api/companies/[id]/research/start to initiate deep research with configurable research types. Create GET /api/companies/[id]/research/[sessionId]/progress for real-time status updates. Build GET /api/companies/[id]/research/[sessionId]/results to retrieve structured findings. Add GET /api/companies/[id]/research/history for viewing past research sessions.\n<info added on 2025-07-16T21:25:05.485Z>\nThe research API endpoints have been fully implemented with production-ready features. Authentication is handled through Clerk middleware on all endpoints. Request validation uses Zod schemas for type safety and input sanitization. The POST endpoint accepts customizable research templates with variable substitution for dynamic queries. Progress tracking includes detailed statistics like total queries, completed queries, and estimated time remaining. Results endpoint supports advanced filtering by research type, date range, and custom metadata fields, with built-in pagination for large result sets. History endpoint provides comprehensive filtering options including date ranges, research types, and completion status. All endpoints include proper error handling with standardized error responses and status codes. Test endpoints have been created for each main endpoint to facilitate development and debugging, located at /api/test-research-endpoints with mock data generation and simulated async operations.\n</info added on 2025-07-16T21:25:05.485Z>",
+            "status": "done",
+            "testStrategy": "Test API endpoints with various request scenarios, verify authentication and authorization, test error responses, validate data validation and sanitization."
           }
         ]
       },
       {
         "id": 9,
-        "title": "Email Template Generation System",
-        "description": "Implement email template system for cold outreach with personalization using real company and user data",
+        "title": "Create Artifact Ideas Based on Deep Research",
+        "description": "Transform deep research findings into specific, actionable artifact ideas that solve identified company problems",
         "status": "pending",
         "dependencies": [
           8
         ],
         "priority": "medium",
-        "details": "Create email template system with fill-in-the-blank style personalization using actual company data from Supabase and YC API. Build templates for different outreach scenarios (artifact presentation, expertise demonstration, value proposition). Implement template customization with real company-specific data insertion including actual metrics, team info, and spearfish scores. Add email preview functionality with live data and basic formatting options. Store user email campaigns and track template usage patterns. Replace any mock email content with dynamically generated content based on real data.",
-        "testStrategy": "Test email template generation with real company data from database, validate personalization accuracy using actual metrics, test email preview with live data, verify template variety and data integration",
+        "details": "Build artifact idea generation system that converts deep research insights into specific, implementable solutions. Create artifact categorization system for different solution types (code contributions, technical demos, business analyses, process improvements). Implement matching algorithm that connects identified company problems to user skills and capabilities. Build artifact specification generator that creates detailed implementation guides with success metrics and deliverables. Create prioritization system that ranks artifact ideas by impact potential and implementation feasibility. Implement artifact tracking system to monitor progress and completion status.",
+        "testStrategy": "Test artifact idea generation accuracy using real research data, validate solution-problem matching effectiveness, test artifact specifications completeness and clarity, verify prioritization system produces actionable recommendations",
         "subtasks": [
           {
             "id": 1,
@@ -648,15 +695,15 @@
       },
       {
         "id": 10,
-        "title": "User Dashboard and Progress Tracking",
-        "description": "Build user dashboard for managing spearfish campaigns, artifacts, and tracking progress with real data integration",
+        "title": "Create Email Template to Send to Specific Company",
+        "description": "Generate personalized email templates that leverage deep research insights and artifact ideas for targeted outreach to specific companies",
         "status": "pending",
         "dependencies": [
           9
         ],
-        "priority": "low",
-        "details": "Create user dashboard showing active spearfish campaigns with real company data, completed artifacts linked to actual companies, and email outreach status from the database. Implement progress tracking with visual indicators based on real metrics and success data. Add user profile management with skills, interests, and preferences stored in Supabase. Build campaign history and analytics views using actual performance data. Implement data export functionality for user portfolios and campaign results. Replace all mock dashboard data with live queries to backend services.",
-        "testStrategy": "Test dashboard functionality with real user data, validate progress tracking calculations against actual metrics, test profile management with Supabase integration, verify analytics use real campaign data",
+        "priority": "medium",
+        "details": "Build email template generation system that creates highly personalized outreach emails based on deep research findings and proposed artifact solutions. Implement template personalization engine that incorporates specific company challenges, identified pain points, and proposed solutions. Create email structure system with compelling subject lines, problem acknowledgment, solution presentation, and artifact demonstration. Build template customization system allowing users to adjust tone, technical depth, and call-to-action based on recipient role and company context. Implement email preview and testing system with A/B testing capabilities for different approaches. Create email tracking system to monitor send rates, open rates, and response rates for optimization.",
+        "testStrategy": "Test email template generation with real company research data, validate personalization accuracy and relevance, test template customization effectiveness, verify email tracking and analytics functionality",
         "subtasks": [
           {
             "id": 1,
@@ -705,7 +752,7 @@
     ],
     "metadata": {
       "created": "2025-07-11T03:44:57.583Z",
-      "updated": "2025-07-15T00:52:17.093Z",
+      "updated": "2025-07-17T01:10:47.723Z",
       "description": "Tasks for master context"
     }
   }
