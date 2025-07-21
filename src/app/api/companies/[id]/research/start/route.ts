@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getGlobalResearchService } from '@/lib/company-research-service';
+import { createServiceClient } from '@/lib/supabase-server';
 
 export async function GET(
   request: NextRequest,
@@ -119,13 +120,29 @@ export async function POST(
       maxCostUsd: 5.0,
       timeoutMs: 120000,
       enableSynthesis: true,
-      saveToDatabase: false
+      saveToDatabase: true
     };
 
-    // Start research session
+    // Get user profile ID from Clerk user ID
+    const supabase = createServiceClient()
+    const { data: userProfile, error: userError } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('clerk_user_id', userId)
+      .single()
+
+    if (userError || !userProfile) {
+      console.error('Failed to get user profile:', userError)
+      return NextResponse.json(
+        { error: 'User profile not found' },
+        { status: 404 }
+      )
+    }
+
+    // Start research session with user profile ID
     const { sessionId } = await researchService.startResearchSession(
       companyId,
-      userId,
+      userProfile.id,
       config
     );
     

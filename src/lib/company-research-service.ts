@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
 // Extend globalThis type for our global maps
 declare global {
@@ -284,7 +285,7 @@ export class CompanyResearchService {
     }
 
     // Create research session record
-    const sessionId = `rs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const sessionId = randomUUID();
     
     const session: Partial<ResearchSession> = {
       id: sessionId,
@@ -315,7 +316,7 @@ export class CompanyResearchService {
     this.progressTracker.startTracking(sessionId, config.templateIds.length);
 
     // Execute research in background
-    this.executeResearchSession(sessionId, config).catch(error => {
+    this.executeResearchSession(sessionId, companyId, config).catch(error => {
       console.error(`Research session ${sessionId} failed:`, error);
       this.progressTracker.updateProgress(sessionId, {
         status: 'failed',
@@ -331,6 +332,7 @@ export class CompanyResearchService {
 
   private async executeResearchSession(
     sessionId: string,
+    companyId: string,
     config: ResearchSessionConfig
   ): Promise<void> {
     
@@ -359,6 +361,7 @@ export class CompanyResearchService {
     // Process results into findings
     const findings = await this.processResultsIntoFindings(
       sessionId,
+      companyId,
       config.variables.companyName,
       results
     );
@@ -554,6 +557,7 @@ export class CompanyResearchService {
 
   private async processResultsIntoFindings(
     sessionId: string,
+    companyId: string,
     companyName: string,
     results: Array<{ template: QueryTemplate; result: ResearchResult; error?: string }>
   ): Promise<ResearchFinding[]> {
@@ -567,6 +571,7 @@ export class CompanyResearchService {
       console.log(`🤖 Starting AI analysis for ${template.name} (${result.content.length} chars)`);
       const aiExtractedFindings = await this.extractFindingsWithAI(
         sessionId,
+        companyId,
         companyName,
         template,
         result
@@ -581,6 +586,7 @@ export class CompanyResearchService {
 
   private async extractFindingsWithAI(
     sessionId: string,
+    companyId: string,
     companyName: string,
     template: QueryTemplate,
     result: ResearchResult
@@ -590,7 +596,7 @@ export class CompanyResearchService {
       // Check if OpenAI is available
       if (!process.env.OPENAI_API_KEY) {
         console.log('🔄 No OpenAI key - falling back to rule-based extraction');
-        return this.parseResultIntoFindings(sessionId, companyName, template, result);
+        return this.parseResultIntoFindings(sessionId, companyId, companyName, template, result);
       }
       // Create a comprehensive prompt for OpenAI to analyze the research
       const analysisPrompt = `You are an expert business analyst. Analyze this research about ${companyName} and extract key findings.
@@ -669,9 +675,9 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
 
       // Convert AI findings to our ResearchFinding format
       const findings: ResearchFinding[] = aiFindings.map((aiFinding: any) => ({
-        id: `rf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: randomUUID(),
         session_id: sessionId,
-        company_id: companyName,
+        company_id: companyId,
         finding_type: aiFinding.finding_type || 'problem_identified',
         title: aiFinding.title || 'Research Finding',
         content: aiFinding.content || '',
@@ -701,12 +707,13 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       
       // Fallback to old method if AI fails
       console.log('Falling back to rule-based extraction');
-      return this.parseResultIntoFindings(sessionId, companyName, template, result);
+      return this.parseResultIntoFindings(sessionId, companyId, companyName, template, result);
     }
   }
 
   private async parseResultIntoFindings(
     sessionId: string,
+    companyId: string,
     companyName: string,
     template: QueryTemplate,
     result: ResearchResult
@@ -721,9 +728,9 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       const findingType = this.mapTemplateToFindingType(template.category);
       
       const finding: ResearchFinding = {
-        id: `rf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: randomUUID(),
         session_id: sessionId,
-        company_id: companyName, // This should be the actual company ID
+        company_id: companyId, // This should be the actual company ID
         finding_type: findingType,
         title: this.extractTitleFromSection(section),
         content: section,

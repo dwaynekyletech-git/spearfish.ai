@@ -6,8 +6,10 @@ const isProtectedRoute = createRouteMatcher([
   '/profile(.*)',
   '/companies(.*)',
   '/settings(.*)',
+  '/admin(.*)',
   '/api/companies(.*)',
   '/api/user(.*)',
+  '/api/admin(.*)',
 ]);
 
 // Define public routes that should not be protected

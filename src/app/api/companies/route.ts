@@ -197,7 +197,18 @@ export async function GET(request: NextRequest) {
                      typeof company.regions === 'string' ? (company.regions as string).split(',').filter(r => r.trim()) : [],
             github_repos: company.github_repos || [],
             huggingface_models: company.huggingface_models || [],
-            spearfish_score: undefined, // Remove null values for scoring
+            // Convert null values to undefined for optional fields
+            team_size: company.team_size ?? undefined,
+            yc_api_id: company.yc_api_id ?? undefined,
+            launched_at: company.launched_at ?? undefined,
+            industry: company.industry ?? undefined,
+            subindustry: company.subindustry ?? undefined,
+            one_liner: company.one_liner ?? undefined,
+            long_description: company.long_description ?? undefined,
+            website_url: company.website_url ?? undefined,
+            small_logo_thumb_url: company.small_logo_thumb_url ?? undefined,
+            ai_confidence_score: company.ai_confidence_score ?? undefined,
+            spearfish_score: undefined, // Remove existing score for recalculation
           };
           
           const scoringResult = spearfishScoringService.calculateScore(companyForScoring);
