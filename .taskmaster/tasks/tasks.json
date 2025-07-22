@@ -639,113 +639,124 @@
       },
       {
         "id": 9,
-        "title": "Create Artifact Ideas Based on Deep Research",
-        "description": "Transform deep research findings into specific, actionable artifact ideas that solve identified company problems",
+        "title": "Build Agent Architecture with Project Idea Generator and Email Template Creator Tools",
+        "description": "Create the core agent system with AI-powered tools for artifact generation and email creation",
         "status": "pending",
         "dependencies": [
           8
         ],
         "priority": "medium",
-        "details": "Build artifact idea generation system that converts deep research insights into specific, implementable solutions. Create artifact categorization system for different solution types (code contributions, technical demos, business analyses, process improvements). Implement matching algorithm that connects identified company problems to user skills and capabilities. Build artifact specification generator that creates detailed implementation guides with success metrics and deliverables. Create prioritization system that ranks artifact ideas by impact potential and implementation feasibility. Implement artifact tracking system to monitor progress and completion status.",
-        "testStrategy": "Test artifact idea generation accuracy using real research data, validate solution-problem matching effectiveness, test artifact specifications completeness and clarity, verify prioritization system produces actionable recommendations",
+        "details": "Build intelligent agent architecture that transforms deep research findings into targeted solution artifacts and personalized outreach emails. Create agent orchestration system that coordinates between two specialized tools: Tool 1 (Project Idea Generator) analyzes research findings to identify problems and generate solution artifacts (technical proposals, integration guides, optimization plans), and Tool 2 (Email Template Creator) takes solution artifacts and creates personalized outreach emails. Implement agent state management, tool communication protocols, API integration with OpenAI/Claude, artifact categorization, prioritization logic, and email personalization engine. Create API endpoints for frontend integration.",
+        "testStrategy": "Test agent tool coordination, verify AI integration works correctly, validate artifact generation quality and email personalization accuracy, test API endpoints functionality",
         "subtasks": [
           {
             "id": 1,
-            "title": "Design Email Template System Architecture",
-            "description": "Create the structure for email templates with dynamic data placeholders.",
+            "title": "Design Agent Architecture and Tool Interface Specifications",
+            "description": "Create the foundational architecture for the agent system with clear tool specifications.",
             "dependencies": [],
-            "details": "Design template schema supporting variable insertion. Create placeholder system for company data, user info, and artifact details. Set up template storage and versioning.",
+            "details": "Design agent orchestration system architecture. Define tool interface specifications with input/output schemas for Project Idea Generator and Email Template Creator. Create agent state management design. Plan tool communication protocols and data flow between tools. Design integration points with existing research data structures.",
             "status": "pending",
-            "testStrategy": "Verify template structure supports all data types, test placeholder system, validate storage design."
+            "testStrategy": "Verify architecture design supports tool coordination, validate interface specifications completeness, test design scalability."
           },
           {
             "id": 2,
-            "title": "Build Template Personalization Engine with Real Data",
-            "description": "Implement system to populate templates with actual company and user data.",
+            "title": "Implement Project Idea Generator Tool",
+            "description": "Build Tool 1 that analyzes research findings and generates targeted solution artifacts.",
             "dependencies": [
               1
             ],
-            "details": "Create data fetching logic for company info from Supabase and YC API. Build template rendering engine that inserts real metrics, scores, and team data. Handle missing data gracefully.",
+            "details": "Implement artifact generation logic that processes research findings and identifies specific problems. Build solution artifact creation for technical proposals, integration guides, and optimization plans. Create prioritization system using confidence scores and priority levels from research data. Implement artifact categorization system for different solution types. Add AI integration for intelligent problem-solution matching.",
             "status": "pending",
-            "testStrategy": "Test data insertion accuracy, verify all placeholders populate correctly, test error handling for missing data."
+            "testStrategy": "Test problem identification accuracy, verify artifact generation quality, validate prioritization system effectiveness, test AI integration."
           },
           {
             "id": 3,
-            "title": "Implement Email Preview and Campaign Tracking",
-            "description": "Build preview functionality and campaign management system.",
+            "title": "Implement Email Template Creator Tool",
+            "description": "Build Tool 2 that creates personalized outreach emails based on generated artifacts.",
             "dependencies": [
               2
             ],
-            "details": "Create email preview component showing rendered templates with real data. Build campaign tracking tables in Supabase. Implement usage analytics and success tracking.",
+            "details": "Create email generation system that takes solution artifacts and produces personalized outreach content. Implement research finding integration to demonstrate company understanding. Build template personalization engine with specific problem references and solution explanations. Create email structure optimization for impact and engagement. Add customization options for tone and technical depth.",
             "status": "pending",
-            "testStrategy": "Test preview accuracy with various templates, verify campaign tracking works, validate analytics data."
+            "testStrategy": "Test email personalization accuracy, verify research finding integration, validate template quality and engagement potential."
           },
           {
             "id": 4,
-            "title": "Replace Mock Email Content with Dynamic Generation",
-            "description": "Update all email-related UI to use real data-driven content generation.",
+            "title": "Create Agent API Endpoints and Integration Layer",
+            "description": "Build API endpoints that connect the agent system to the frontend interface.",
             "dependencies": [
               3
             ],
-            "details": "Remove any hardcoded email examples. Connect template system to real company profiles. Display personalized email previews using actual spearfish scores and company metrics. Add real-time template editing.",
+            "details": "Create /api/companies/[id]/artifacts/generate endpoint for artifact generation. Build /api/companies/[id]/artifacts/[id]/email endpoint for email template creation. Implement ArtifactGenerationService that interfaces with research data. Add artifact traceability linking back to specific research findings. Create error handling and validation for API requests.",
             "status": "pending",
-            "testStrategy": "Verify emails use real company data, test personalization with different companies, validate editing functionality."
+            "testStrategy": "Test API endpoints functionality, verify data flow from research to artifacts to emails, validate error handling and edge cases."
           }
         ]
       },
       {
         "id": 10,
-        "title": "Create Email Template to Send to Specific Company",
-        "description": "Generate personalized email templates that leverage deep research insights and artifact ideas for targeted outreach to specific companies",
+        "title": "Build User Interface Flow for Artifact Generation and Email Creation",
+        "description": "Create complete UI experience for the artifact generation and email creation workflow",
         "status": "pending",
         "dependencies": [
           9
         ],
         "priority": "medium",
-        "details": "Build email template generation system that creates highly personalized outreach emails based on deep research findings and proposed artifact solutions. Implement template personalization engine that incorporates specific company challenges, identified pain points, and proposed solutions. Create email structure system with compelling subject lines, problem acknowledgment, solution presentation, and artifact demonstration. Build template customization system allowing users to adjust tone, technical depth, and call-to-action based on recipient role and company context. Implement email preview and testing system with A/B testing capabilities for different approaches. Create email tracking system to monitor send rates, open rates, and response rates for optimization.",
-        "testStrategy": "Test email template generation with real company research data, validate personalization accuracy and relevance, test template customization effectiveness, verify email tracking and analytics functionality",
+        "details": "Implement complete user experience flow: 1) User generates deep research report for target company, 2) User clicks 'Generate Artifacts' button to create project ideas based on identified company problems, 3) User selects which project they completed, 4) System generates personalized email template for outreach. Build UI flow in Spear This! tab with progressive disclosure: research results → artifact generation button → project selection interface → email template output. Create seamless workflow from research insights to actionable outreach materials with smooth transitions and state management.",
+        "testStrategy": "Test complete user journey, verify all steps flow smoothly, validate state persistence and navigation works correctly, test responsive design",
         "subtasks": [
           {
             "id": 1,
-            "title": "Design Dashboard Layout and Data Architecture",
-            "description": "Create dashboard UI structure and plan data fetching strategy.",
+            "title": "Add 'Generate Artifacts' Button to Research Results",
+            "description": "Add artifact generation button that appears after research completion in Spear This! tab.",
             "dependencies": [],
-            "details": "Design responsive dashboard layout with sections for campaigns, artifacts, and analytics. Plan efficient data fetching from Supabase. Create loading state designs.",
+            "details": "Add 'Generate Artifacts' button that appears after research completion. Position button prominently in research results section. Implement button state management (disabled/enabled based on research status). Add loading states and visual feedback during artifact generation. Connect button to agent API endpoints.",
             "status": "pending",
-            "testStrategy": "Verify layout responsiveness, test data architecture efficiency, validate UX flow."
+            "testStrategy": "Test button placement and visibility, verify button states work correctly, validate API integration."
           },
           {
             "id": 2,
-            "title": "Implement Campaign and Artifact Tracking with Real Data",
-            "description": "Build campaign management system connected to actual company and artifact data.",
+            "title": "Build Project Ideas Display Component",
+            "description": "Create UI component for displaying generated project ideas with clear problem-solution mapping.",
             "dependencies": [
               1
             ],
-            "details": "Create APIs to fetch user campaigns with real company associations. Display artifact progress linked to actual companies. Show email outreach status from database. Implement real-time updates.",
+            "details": "Create project ideas display component showing generated solutions with problem-solution mapping. Design project card layout with clear descriptions, difficulty levels, and impact potential. Implement expandable cards for detailed information. Add visual indicators for different artifact types (technical proposals, integration guides, optimization plans).",
             "status": "pending",
-            "testStrategy": "Test campaign data accuracy, verify artifact tracking with real companies, validate real-time updates."
+            "testStrategy": "Test project ideas display correctly, verify card interactions work, validate responsive design across devices."
           },
           {
             "id": 3,
-            "title": "Build Analytics and Progress Visualization",
-            "description": "Create analytics views using real performance metrics and campaign data.",
+            "title": "Implement Project Selection Interface",
+            "description": "Create interface for users to select which project they've completed from the generated ideas.",
             "dependencies": [
               2
             ],
-            "details": "Implement charts and visualizations for campaign performance. Calculate success metrics from actual user actions. Create progress indicators based on real completion data. Add filtering and date range selection.",
+            "details": "Build project selection UI with radio buttons or checkboxes for project completion status. Add project details modal for more information. Create completion confirmation flow with progress tracking. Implement validation to ensure user selects completed project before proceeding. Add visual feedback for selected projects.",
             "status": "pending",
-            "testStrategy": "Verify analytics calculations accuracy, test visualization with various data sets, validate filtering functionality."
+            "testStrategy": "Test project selection flow, verify completion tracking works, validate user can't proceed without selection."
           },
           {
             "id": 4,
-            "title": "Replace Mock Dashboard Data with Live Backend Queries",
-            "description": "Update entire dashboard to fetch and display real user and campaign data.",
+            "title": "Build Email Template Generation and Preview Interface",
+            "description": "Create UI for email template generation, preview, and customization.",
             "dependencies": [
               3
             ],
-            "details": "Remove all mock data from dashboard components. Implement API calls to fetch real user campaigns, artifacts, and metrics. Add proper loading states and error handling. Ensure data refreshes appropriately.",
+            "details": "Create email generation interface that calls agent API with selected project. Build email preview component with subject line, body content, and call-to-action display. Implement template customization options for tone and technical depth. Add copy-to-clipboard functionality and export options. Create email editing capabilities for final touches.",
             "status": "pending",
-            "testStrategy": "Verify all data comes from backend services, test loading and error states, validate data freshness and accuracy."
+            "testStrategy": "Test email generation triggers correctly, verify preview displays accurately, validate customization options work."
+          },
+          {
+            "id": 5,
+            "title": "Implement Complete User Flow with Progressive Disclosure",
+            "description": "Connect all components into seamless workflow with navigation and state management.",
+            "dependencies": [
+              4
+            ],
+            "details": "Implement step-by-step user flow: research results → generate artifacts button → project ideas list → project selection → email template output. Add progress indicators and breadcrumb navigation. Create smooth transitions between each step. Implement back/forward navigation and state persistence. Add workflow restart capabilities.",
+            "status": "pending",
+            "testStrategy": "Test complete user journey end-to-end, verify all steps flow smoothly, validate state persistence and navigation works correctly."
           }
         ]
       }
