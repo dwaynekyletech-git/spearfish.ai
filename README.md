@@ -1,16 +1,17 @@
 # Spearfish AI
 
-**AI-Powered Y Combinator Company Discovery & Investment Analysis Platform**
+**Strategic Job Preparation Platform for AI Company Career Advancement**
 
-Spearfish AI is an intelligent platform that discovers, analyzes, and scores Y Combinator companies based on investment potential using our proprietary Spearfish scoring algorithm (0-10 scale). Built for investors, analysts, and anyone interested in tracking the most promising startups from Y Combinator's portfolio.
+Spearfish AI is a strategic job preparation platform that enables targeted career advancement through the "spearfishing" methodology. Instead of competing with hundreds of applicants through traditional job boards, users create their own opportunities by demonstrating immediate value to carefully selected AI companies.
 
 ## 🚀 Features
 
-- **Proprietary Scoring Algorithm**: 0-10 scale scoring based on 9+ weighted investment criteria
-- **Real-time GitHub Integration**: Automatic repository discovery and metrics tracking
-- **AI-Powered Research**: Deep market analysis using advanced AI research capabilities
-- **Company Discovery Dashboard**: Advanced filtering and search across Y Combinator companies
-- **Historical Score Tracking**: Monitor company performance over time with algorithm versioning
+- **Spearfishing Methodology**: Strategic targeting of AI companies instead of mass applications
+- **Company Research & Analysis**: Deep insights into target AI companies and their needs
+- **Value Demonstration Tools**: Create targeted project ideas and proposals that show immediate impact
+- **AI-Powered Research**: Comprehensive company analysis using advanced AI research capabilities
+- **Email Generation**: Craft personalized outreach emails that demonstrate understanding and value
+- **Project Artifact Creation**: Generate compelling project proposals and proof-of-concepts
 - **Secure Multi-tenant Platform**: JWT-based authentication with row-level security
 
 ## 🛠 Technology Stack
@@ -20,7 +21,7 @@ Spearfish AI is an intelligent platform that discovers, analyzes, and scores Y C
 - **Database**: Supabase (PostgreSQL) with Row Level Security (RLS)
 - **Authentication**: Clerk with JWT integration to Supabase
 - **AI Services**: OpenAI, Perplexity for research and classification
-- **External APIs**: GitHub API, Y Combinator data integration
+- **External APIs**: GitHub API, company data integration
 - **Testing**: Jest with React Testing Library and jsdom
 - **Deployment**: Vercel with automated cron jobs
 
@@ -114,8 +115,8 @@ spearfish-ai/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/               # API routes
-│   │   ├── companies/         # Company pages
-│   │   └── dashboard/         # Main discovery interface
+│   │   ├── companies/         # Company analysis pages
+│   │   └── dashboard/         # Main job preparation interface
 │   ├── components/            # React components
 │   │   ├── auth/              # Authentication guards
 │   │   ├── company/           # Company-specific components
@@ -133,23 +134,23 @@ spearfish-ai/
 
 ## 🔍 Core Features
 
-### Spearfish Scoring Algorithm
-- **Multi-factor Analysis**: Evaluates companies across 9+ investment criteria
-- **Weighted Scoring**: Each factor contributes to a final 0-10 score
-- **Historical Tracking**: Monitor score changes over time with algorithm versioning
-- **Batch Processing**: Efficient recalculation for large datasets
+### Spearfishing Methodology
+- **Strategic Company Targeting**: Focus on quality opportunities over quantity applications
+- **Value-First Approach**: Demonstrate immediate impact potential before applying
+- **Personalized Outreach**: Custom proposals tailored to each company's specific needs
+- **Proactive Opportunity Creation**: Generate your own opportunities instead of waiting for job postings
 
-### GitHub Integration
-- **Automatic Repository Discovery**: Finds GitHub repos through company analysis
-- **Real-time Metrics Tracking**: Stars, forks, and growth rate monitoring
-- **Rate Limiting Handling**: Intelligent retry logic for GitHub API constraints
-- **Historical Data**: Track repository performance over time
+### AI-Powered Company Research
+- **Deep Company Analysis**: Comprehensive research into target AI companies using advanced AI models
+- **Market Positioning**: Understand company challenges, goals, and technology stack
+- **Competitive Landscape**: Analyze company positioning within the AI industry
+- **Session Tracking**: Maintain research history and insights for each target company
 
-### AI Research System
-- **Market Analysis**: AI-powered research using Perplexity's latest models
-- **Session Tracking**: Maintain research history and progress
-- **Template-based Queries**: Consistent, high-quality research outputs
-- **Progress Indicators**: Real-time feedback for long-running operations
+### Project & Email Generation
+- **Targeted Project Ideas**: AI-generated project proposals that address specific company needs
+- **Proof-of-Concept Creation**: Develop compelling demonstrations of your value proposition
+- **Personalized Email Outreach**: Craft professional emails that showcase understanding and immediate value
+- **Artifact Management**: Organize and track all generated materials for each opportunity
 
 ## 🔐 Authentication & Security
 
@@ -190,13 +191,13 @@ The application is designed for deployment on Vercel with the following setup:
 ## 📊 Database Schema
 
 ### Core Tables
-- **companies**: Y Combinator companies with Spearfish scores
+- **companies**: Target AI companies and their analysis data
 - **user_profiles**: User data synced with Clerk authentication  
-- **github_repositories**: GitHub repository data and metrics
-- **github_repository_metrics**: Historical growth tracking
-- **score_history**: Historical scoring with algorithm versioning
-- **research_sessions**: AI research session tracking
-- **founders**: Company team member information
+- **research_sessions**: AI research session tracking and insights
+- **email_generations**: Generated outreach emails and templates
+- **project_artifacts**: Created project proposals and proof-of-concepts
+- **user_company_interactions**: Track user engagement with target companies
+- **company_analysis**: Detailed company research and market positioning data
 
 ## 🤝 Contributing
 
@@ -220,16 +221,16 @@ For support and questions:
 ## 🔄 API Integration
 
 ### External Services
-- **Y Combinator API**: Company and batch data synchronization
-- **GitHub API**: Repository discovery and metrics collection
-- **OpenAI**: AI classification and analysis
-- **Perplexity**: Advanced research capabilities
+- **Company Data APIs**: AI company information and analysis
+- **GitHub API**: Repository discovery and technology stack analysis
+- **OpenAI**: AI-powered research and content generation
+- **Perplexity**: Advanced company research and market analysis
 
 ### Rate Limiting
-- GitHub API: Intelligent retry and backoff strategies
-- Research APIs: Request queuing and progress tracking
+- Research APIs: Request queuing and progress tracking for AI-powered analysis
+- Company Data APIs: Intelligent retry and backoff strategies
 - Database: Optimized queries and connection pooling
 
 ---
 
-**Built with ❤️ for the startup investment community**
+**Built with ❤️ for strategic career advancement in AI**
