@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { safeFetch, getSSRFConfig } from './security/url-validator';
-import { logExternalApiCall, logError } from './logger';
+import { logExternalApiCall, logError, logInfo, logDebug } from './logger';
+import { getCacheService, CACHE_TTL } from './cache-service';
+import { getCostGuard } from './api-cost-guard';
+import { getModelSelector } from './model-selector';
 
 // Types for Perplexity API
 export interface PerplexityMessage {
@@ -60,6 +63,14 @@ export interface ResearchSessionConfig {
   return_images?: boolean;
   return_related_questions?: boolean;
   search_domain_filter?: string[];
+  // Cost optimization options
+  enableCaching?: boolean;
+  cacheKey?: string;
+  cacheTTL?: number;
+  prioritizeCost?: boolean;
+  maxCostUSD?: number;
+  userId?: string;
+  sessionId?: string;
 }
 
 export interface ResearchResult {
@@ -142,6 +153,9 @@ export class PerplexityResearchService {
   private apiKey: string;
   private baseUrl: string = 'https://api.perplexity.ai';
   private rateLimiter: RateLimiter;
+  private cacheService = getCacheService();
+  private costGuard = getCostGuard();
+  private modelSelector = getModelSelector();
   private defaultConfig: ResearchSessionConfig = {
     model: 'sonar-deep-research',
     temperature: 0.2,
@@ -150,6 +164,8 @@ export class PerplexityResearchService {
     return_citations: true,
     return_images: false,
     return_related_questions: true,
+    enableCaching: true,
+    prioritizeCost: false,
   };
 
   constructor(apiKey?: string) {
@@ -262,6 +278,68 @@ export class PerplexityResearchService {
   ): Promise<ResearchResult> {
     const finalConfig = { ...this.defaultConfig, ...config };
     
+    // Generate cache key for this research request
+    const cacheKey = finalConfig.cacheKey || this.generateCacheKey(query, systemPrompt, finalConfig);
+    
+    // Check if we should use caching
+    if (finalConfig.enableCaching) {
+      const cachedResult = await this.cacheService.getCachedOrGenerate(
+        cacheKey,
+        () => this.performResearch(query, systemPrompt, finalConfig),
+        {
+          ttlSeconds: finalConfig.cacheTTL || CACHE_TTL.RESEARCH_QUERY,
+          keyPrefix: 'perplexity_research',
+          enableMetrics: true
+        }
+      );
+
+      // Add cache metadata to result
+      if (cachedResult.cached) {
+        logInfo('Perplexity research served from cache', {
+          cacheAge: cachedResult.age,
+          queryHash: cacheKey.substring(0, 16),
+          userId: finalConfig.userId
+        });
+        
+        return {
+          ...cachedResult.data,
+          cost_usd: 0 // No API cost for cached results
+        };
+      }
+      
+      return cachedResult.data;
+    }
+
+    // No caching - perform research directly
+    return this.performResearch(query, systemPrompt, finalConfig);
+  }
+
+  private async performResearch(
+    query: string,
+    systemPrompt?: string,
+    config?: ResearchSessionConfig
+  ): Promise<ResearchResult> {
+    const finalConfig = { ...this.defaultConfig, ...config };
+    
+    // Select optimal model for this task
+    let selectedModel = finalConfig.model || 'sonar-deep-research';
+    if (finalConfig.prioritizeCost) {
+      const modelSelection = this.modelSelector.selectModel({
+        taskType: 'research_deep',
+        prioritizeCost: true,
+        qualityLevel: 'standard'
+      });
+      
+      if (modelSelection.provider === 'perplexity') {
+        selectedModel = modelSelection.model;
+        logDebug('Model selected for cost optimization', {
+          original: finalConfig.model,
+          selected: selectedModel,
+          reasoning: modelSelection.reasoning
+        });
+      }
+    }
+
     const messages: PerplexityMessage[] = [];
     
     if (systemPrompt) {
@@ -270,8 +348,42 @@ export class PerplexityResearchService {
     
     messages.push({ role: 'user', content: query });
 
+    // Estimate cost before making the request
+    const estimatedTokens = this.estimateTokens(query, systemPrompt, finalConfig);
+    const costEstimate = this.costGuard.estimateCost(
+      selectedModel,
+      estimatedTokens,
+      finalConfig.max_tokens || 2000,
+      'perplexity'
+    );
+
+    // Check cost limits
+    const costCheck = await this.costGuard.checkCostLimit(
+      costEstimate.estimatedCostUSD,
+      finalConfig.userId
+    );
+
+    if (!costCheck.allowed) {
+      logError('Perplexity research blocked by cost guard', {
+        reason: costCheck.reason,
+        estimatedCost: costEstimate.estimatedCostUSD,
+        currentDailyCost: costCheck.currentDailyCost,
+        userId: finalConfig.userId
+      });
+      
+      throw new Error(`API cost limit exceeded: ${costCheck.reason}`);
+    }
+
+    // Log cost check results
+    logDebug('Perplexity cost check passed', {
+      estimatedCost: costEstimate.estimatedCostUSD,
+      remainingBudget: costCheck.remainingBudget,
+      userId: finalConfig.userId,
+      model: selectedModel
+    });
+
     const request: PerplexityRequest = {
-      model: finalConfig.model!,
+      model: selectedModel,
       messages,
       temperature: finalConfig.temperature,
       max_tokens: finalConfig.max_tokens,
@@ -282,11 +394,37 @@ export class PerplexityResearchService {
       search_domain_filter: finalConfig.search_domain_filter,
     };
 
+    const startTime = Date.now();
     const response = await this.makeRequest(request);
+    const duration = Date.now() - startTime;
+    
+    // Calculate actual cost
+    const actualCost = this.calculateCost(response.usage, response.model);
+    
+    // Record the actual cost
+    await this.costGuard.recordCost(
+      actualCost,
+      'perplexity',
+      response.model,
+      finalConfig.userId
+    );
+    
+    // Log the successful API call with cost details
+    logExternalApiCall(
+      'perplexity', 
+      `${this.baseUrl}/chat/completions`,
+      duration,
+      actualCost
+    );
     
     // Log citation count for debugging
     if (response.citations && response.citations.length > 0) {
-      console.log(`✅ Perplexity found ${response.citations.length} citations for query`);
+      logDebug(`Perplexity found ${response.citations.length} citations`, {
+        model: response.model,
+        tokens: response.usage.total_tokens,
+        cost: actualCost,
+        userId: finalConfig.userId
+      });
     }
     
     const result: ResearchResult = {
@@ -295,10 +433,41 @@ export class PerplexityResearchService {
       images: response.images,
       related_questions: response.related_questions,
       usage: response.usage,
-      cost_usd: this.calculateCost(response.usage, response.model),
+      cost_usd: actualCost,
     };
 
     return result;
+  }
+
+  private generateCacheKey(
+    query: string, 
+    systemPrompt?: string, 
+    config?: ResearchSessionConfig
+  ): string {
+    const keyComponents = [
+      query,
+      systemPrompt || '',
+      config?.model || '',
+      config?.search_recency_filter || '',
+      JSON.stringify(config?.search_domain_filter || []),
+      config?.temperature || 0.2,
+      config?.max_tokens || 4000
+    ];
+    
+    return keyComponents.join('|');
+  }
+
+  private estimateTokens(
+    query: string,
+    systemPrompt?: string,
+    config?: ResearchSessionConfig
+  ): number {
+    // Rough estimation: ~4 characters per token
+    const queryTokens = Math.ceil(query.length / 4);
+    const systemTokens = systemPrompt ? Math.ceil(systemPrompt.length / 4) : 0;
+    const overhead = 50; // Additional tokens for formatting, etc.
+    
+    return queryTokens + systemTokens + overhead;
   }
 
   async deepResearch(
@@ -329,6 +498,9 @@ Provide detailed, actionable insights with specific examples and evidence.`;
       search_recency_filter: 'week',
       return_citations: true,
       return_related_questions: true,
+      enableCaching: true,
+      cacheTTL: CACHE_TTL.RESEARCH_QUERY,
+      cacheKey: `deep_research:${companyName}:${focusAreas.join(',')}`,
     });
   }
 
@@ -358,6 +530,9 @@ Focus on actionable technical insights that could lead to partnership or solutio
       ...config,
       search_recency_filter: 'week',
       search_domain_filter: ['github.com', 'stackoverflow.com', 'techcrunch.com', 'hackernews.com'],
+      enableCaching: true,
+      cacheTTL: CACHE_TTL.ANALYSIS,
+      cacheKey: `technical_analysis:${companyName}:${repositoryUrls.join(',')}`,
     });
   }
 
@@ -387,6 +562,9 @@ Focus on actionable competitive insights that reveal market positioning and oppo
       ...config,
       search_recency_filter: 'month',
       return_citations: true,
+      enableCaching: true,
+      cacheTTL: CACHE_TTL.ANALYSIS,
+      cacheKey: `competitive_analysis:${companyName}:${competitors.join(',')}`,
     });
   }
 
@@ -412,6 +590,9 @@ Focus on market-driven insights that reveal business opportunities and challenge
       ...config,
       search_recency_filter: 'month',
       return_citations: true,
+      enableCaching: true,
+      cacheTTL: CACHE_TTL.ANALYSIS,
+      cacheKey: `market_analysis:${companyName}:${industry}`,
     });
   }
 

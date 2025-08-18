@@ -9,6 +9,10 @@ import { generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { YCCompany, ValidatedCompany } from './company-data-service';
+import { getCacheService, CACHE_TTL } from './cache-service';
+import { getCostGuard } from './api-cost-guard';
+import { getModelSelector } from './model-selector';
+import { logInfo, logDebug, logError } from './logger';
 
 // =============================================================================
 // Zod Schema for Structured Output
@@ -70,6 +74,9 @@ export interface ClassificationStats {
 export class AIClassificationService {
   private readonly defaultModel = 'gpt-4o-mini'; // Cost-effective for classification
   private readonly timeout: number;
+  private readonly cacheService = getCacheService();
+  private readonly costGuard = getCostGuard();
+  private readonly modelSelector = getModelSelector();
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -86,7 +93,7 @@ export class AIClassificationService {
   // =============================================================================
 
   /**
-   * Classify a single company using GPT-4 via AI SDK
+   * Classify a single company using AI with caching and cost controls
    */
   async classifyCompany(
     company: YCCompany | ValidatedCompany,
@@ -95,25 +102,137 @@ export class AIClassificationService {
     const startTime = Date.now();
 
     try {
-      const prompt = this.buildClassificationPrompt(company, options);
+      // Generate cache key based on company data
+      const cacheKey = this.generateCacheKey(company, options);
       
-      const { object } = await generateObject({
-        model: openai(this.defaultModel),
-        schema: ClassificationSchema,
-        system: this.getSystemPrompt(),
-        prompt: prompt,
-        temperature: 0.1, // Low temperature for consistent classification
-      });
+      // Try to get cached result first
+      const cachedResult = await this.cacheService.getCachedOrGenerate(
+        cacheKey,
+        () => this.performClassification(company, options, startTime),
+        {
+          ttlSeconds: CACHE_TTL.CLASSIFICATION,
+          keyPrefix: 'ai_classification',
+          enableMetrics: true
+        }
+      );
 
-      const processingTime = Date.now() - startTime;
-      return this.validateAndProcessResult(object, processingTime);
+      if (cachedResult.cached) {
+        logDebug('AI classification served from cache', {
+          companyName: company.name,
+          cacheAge: cachedResult.age,
+          companyId: company.id
+        });
+        
+        return {
+          ...cachedResult.data,
+          processingTime: Date.now() - startTime
+        };
+      }
+
+      return cachedResult.data;
 
     } catch (error) {
-      console.error('Error in AI classification:', error);
+      logError('Error in AI classification', { 
+        error: error instanceof Error ? error.message : error,
+        companyName: company.name,
+        companyId: company.id
+      });
       
       // Fallback to rule-based classification
       return this.fallbackClassification(company, Date.now() - startTime);
     }
+  }
+
+  private async performClassification(
+    company: YCCompany | ValidatedCompany,
+    options: ClassificationOptions,
+    startTime: number
+  ): Promise<AIClassificationResult> {
+    // Select optimal model for classification task
+    const modelSelection = this.modelSelector.selectModel({
+      taskType: 'classification',
+      qualityLevel: 'standard',
+      prioritizeCost: true
+    });
+
+    const selectedModel = modelSelection.provider === 'openai' ? modelSelection.model : this.defaultModel;
+    
+    // Estimate cost before making the request
+    const prompt = this.buildClassificationPrompt(company, options);
+    const estimatedTokens = this.estimateTokens(prompt);
+    const costEstimate = this.costGuard.estimateCost(
+      selectedModel,
+      estimatedTokens,
+      200, // Classification typically has short outputs
+      'openai'
+    );
+
+    // Check cost limits (no userId available in this context, so check global only)
+    const costCheck = await this.costGuard.checkCostLimit(costEstimate.estimatedCostUSD);
+
+    if (!costCheck.allowed) {
+      logError('AI classification blocked by cost guard', {
+        reason: costCheck.reason,
+        estimatedCost: costEstimate.estimatedCostUSD,
+        companyName: company.name
+      });
+      
+      // Fall back to rule-based classification when cost limits hit
+      return this.fallbackClassification(company, Date.now() - startTime);
+    }
+
+    logDebug('AI classification cost check passed', {
+      estimatedCost: costEstimate.estimatedCostUSD,
+      remainingBudget: costCheck.remainingBudget,
+      model: selectedModel,
+      companyName: company.name
+    });
+
+    const { object } = await generateObject({
+      model: openai(selectedModel),
+      schema: ClassificationSchema,
+      system: this.getSystemPrompt(),
+      prompt: prompt,
+      temperature: 0.1, // Low temperature for consistent classification
+    });
+
+    // Record the actual cost (estimate for now, as we don't have actual token usage from AI SDK)
+    await this.costGuard.recordCost(
+      costEstimate.estimatedCostUSD,
+      'openai',
+      selectedModel
+    );
+
+    const processingTime = Date.now() - startTime;
+    
+    logInfo('AI classification completed', {
+      companyName: company.name,
+      isAIRelated: object.is_ai_related,
+      confidence: object.confidence,
+      cost: costEstimate.estimatedCostUSD,
+      processingTime,
+      model: selectedModel
+    });
+
+    return this.validateAndProcessResult(object, processingTime);
+  }
+
+  private generateCacheKey(company: YCCompany | ValidatedCompany, options: ClassificationOptions): string {
+    // Create cache key from company data that affects classification
+    const keyComponents = [
+      company.name,
+      company.one_liner || '',
+      (company as any).description || '',
+      company.long_description || '',
+      JSON.stringify(options)
+    ];
+    
+    return keyComponents.join('|');
+  }
+
+  private estimateTokens(prompt: string): number {
+    // Rough estimation: ~4 characters per token
+    return Math.ceil(prompt.length / 4) + 100; // Add overhead for system prompt
   }
 
   /**
