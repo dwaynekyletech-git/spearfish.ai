@@ -1,0 +1,734 @@
+{
+  "refactor": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Baseline Audit and Quick Wins",
+        "description": "Produce comprehensive issues list and fix top 5 high-impact bugs. Success = build passes, TypeScript errors < 10, dead code removed.",
+        "details": "Remove TypeScript @ts-nocheck directives from github-service.ts and company-research-service.ts. Delete unused scripts including add-specific-companies.js, verify-companies.js, sync-real-github-data.js, and test-github-sync.js. Create comprehensive .env.example with all required variables including database, auth, AI APIs, GitHub, and cost controls. Add CI workflow with lint, type check, build, and test jobs. Implement health check endpoint at /api/health for monitoring service status.",
+        "testStrategy": "Test build passes without TypeScript errors, verify CI workflow runs successfully, validate health check endpoint responds correctly, confirm dead code removal doesn't break functionality",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Remove TypeScript @ts-nocheck Directives",
+            "description": "Remove @ts-nocheck from src/lib/github-service.ts:1 and src/lib/company-research-service.ts:1 and fix resulting TypeScript errors",
+            "dependencies": [],
+            "details": "Remove @ts-nocheck directive from both files. Fix any TypeScript compilation errors that surface by adding proper type annotations, interfaces, and handling missing type definitions. Ensure all functions have proper return types and parameter types.",
+            "status": "pending",
+            "testStrategy": "Verify TypeScript compilation passes without errors, run type checking in CI, validate all functions have proper types"
+          },
+          {
+            "id": 2,
+            "title": "Delete Unused Scripts and Files",
+            "description": "Remove dead code including unused scripts and outdated files",
+            "dependencies": [1],
+            "details": "Delete scripts/add-specific-companies.js, scripts/verify-companies.js, sync-real-github-data.js, test-github-sync.js. Remove any references to these files in package.json scripts or other configuration files.",
+            "status": "pending",
+            "testStrategy": "Verify application still functions correctly after file removal, check for any broken imports or references"
+          },
+          {
+            "id": 3,
+            "title": "Create Comprehensive Environment Variables File",
+            "description": "Create .env.example with all required variables and clear documentation",
+            "dependencies": [],
+            "details": "Create .env.example with sections for Database (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY), Auth (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY), AI APIs (OPENAI_API_KEY, PERPLEXITY_API_KEY), GitHub (GITHUB_TOKEN), and Cost Controls (MAX_DAILY_API_COST_USD, MAX_USER_DAILY_COST_USD).",
+            "status": "pending",
+            "testStrategy": "Verify all environment variables are documented with examples and comments explaining their purpose"
+          },
+          {
+            "id": 4,
+            "title": "Add CI Workflow Configuration",
+            "description": "Create .github/workflows/ci.yml with lint, type check, build, and test jobs",
+            "dependencies": [1, 2],
+            "details": "Create GitHub Actions workflow that runs on push and pull request events. Include jobs for npm ci, npm run lint, npm run build, and npm test. Configure proper Node.js version and caching for performance.",
+            "status": "pending",
+            "testStrategy": "Test CI workflow runs successfully on sample commit, verify all checks pass, validate workflow fails on intentional errors"
+          },
+          {
+            "id": 5,
+            "title": "Implement Health Check Endpoint",
+            "description": "Create /api/health endpoint for monitoring service dependencies",
+            "dependencies": [3],
+            "details": "Create src/app/api/health/route.ts that checks availability of Supabase, Clerk, and OpenAI services. Return JSON status object with service availability flags and overall health status.",
+            "status": "pending",
+            "testStrategy": "Test health endpoint returns correct status for each service, verify endpoint works with and without environment variables"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Security Hardening",
+        "description": "Close OWASP Top 10 vulnerabilities. Success = 0 high/critical findings in security scan, all API routes validated.",
+        "details": "Move all API keys from code to environment variables. Add security headers including X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, and Content-Security-Policy. Implement CSRF protection on all mutation routes. Add Zod validation to all 37 API routes for input sanitization. Replace console.log statements with structured logging. Add SSRF protection for external URL fetching. Run npm audit and document any ignored vulnerabilities.",
+        "testStrategy": "Run security scanning tools, test CSRF protection blocks invalid requests, verify all API routes have input validation, confirm no API keys in code",
+        "priority": "high",
+        "dependencies": [1],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit and Secure API Keys",
+            "description": "Move all hardcoded API keys to environment variables and audit codebase for exposed secrets",
+            "dependencies": [],
+            "details": "Run grep -r \"sk-\" src/ to find any exposed API keys. Move any found keys to environment variables. Audit codebase for other secret patterns like API tokens, passwords, or connection strings.",
+            "status": "pending",
+            "testStrategy": "Verify no secrets found in code scan, test application works with environment variables, confirm no secrets in git history"
+          },
+          {
+            "id": 2,
+            "title": "Add Security Headers Configuration",
+            "description": "Configure security headers in next.config.js to prevent common web vulnerabilities",
+            "dependencies": [],
+            "details": "Add security headers array to next.config.js including X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block, Strict-Transport-Security: max-age=31536000, and Content-Security-Policy with appropriate directives.",
+            "status": "pending",
+            "testStrategy": "Test security headers are present in HTTP responses, verify CSP doesn't break legitimate functionality, validate with security header analyzers"
+          },
+          {
+            "id": 3,
+            "title": "Implement CSRF Protection",
+            "description": "Add CSRF validation to all mutation API routes",
+            "dependencies": [],
+            "details": "Create CSRF validation function that checks Origin and Referer headers against NEXT_PUBLIC_BASE_URL. Add this validation to all POST, PUT, DELETE, and PATCH API routes in src/app/api/companies/[id]/*/route.ts files.",
+            "status": "pending",
+            "testStrategy": "Test CSRF protection blocks requests with invalid origins, verify legitimate requests still work, test with various origin/referer combinations"
+          },
+          {
+            "id": 4,
+            "title": "Add Zod Validation to API Routes",
+            "description": "Implement input validation using Zod schemas for all 37 API routes",
+            "dependencies": [],
+            "details": "Create Zod validation schemas for each API route's expected input. Add validation to routes like /api/companies/[id]/research/start/route.ts with schemas for companyId (UUID), depth (enum), and focus (array). Return 400 status with error details for invalid input.",
+            "status": "pending",
+            "testStrategy": "Test API routes reject invalid input with proper error messages, verify valid input still processes correctly, test edge cases and boundary conditions"
+          },
+          {
+            "id": 5,
+            "title": "Replace Console Logging with Structured Logging",
+            "description": "Replace all console.log statements with structured logging library",
+            "dependencies": [],
+            "details": "Install Pino logging library. Create src/lib/logger.ts with structured logger configuration. Replace all console.log, console.warn, console.error statements throughout codebase with appropriate logger calls including context data.",
+            "status": "pending",
+            "testStrategy": "Verify no console.log statements remain in production code, test structured logs include proper context and formatting, validate log levels work correctly"
+          },
+          {
+            "id": 6,
+            "title": "Add SSRF Protection",
+            "description": "Implement Server-Side Request Forgery protection for external URL fetching",
+            "dependencies": [],
+            "details": "Create URL validation function in src/lib/company-research-service.ts that blocks private IP ranges (127.0.0.1, 169.254.0.0/16, 10.0.0.0/8). Add this validation before any external URL fetching operations.",
+            "status": "pending",
+            "testStrategy": "Test SSRF protection blocks requests to private IPs, verify legitimate external URLs still work, test various IP range formats"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Supabase Schema and RLS Check",
+        "description": "Secure all 15 tables with RLS policies. Success = 100% tables have RLS enabled, no service key in client code.",
+        "details": "Remove service role key usage from client components. Add missing database indexes for performance optimization including companies score/batch index, GitHub metrics growth index, and research sessions company index. Fix RLS policies for companies table with public read and authenticated update permissions. Add RLS policies for artifacts table with owner-only access. Create database backup script and add service role safeguards.",
+        "testStrategy": "Test RLS policies prevent unauthorized access, verify index usage improves query performance, validate backup and restore procedures work",
+        "priority": "high",
+        "dependencies": [2],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit Service Role Key Usage",
+            "description": "Remove any service role key usage from client-side code",
+            "dependencies": [],
+            "details": "Scan all client components for SUPABASE_SERVICE_ROLE_KEY usage. Ensure service role key is only used in src/lib/supabase-server.ts for admin operations. Move any client-side service role usage to server-side API routes.",
+            "status": "pending",
+            "testStrategy": "Verify no service role key in client code, test admin operations still work from server, confirm client operations use anon key"
+          },
+          {
+            "id": 2,
+            "title": "Add Performance Indexes",
+            "description": "Create missing database indexes in new migration file",
+            "dependencies": [],
+            "details": "Create supabase/migrations/20250116_performance_indexes.sql with CONCURRENTLY indexes: companies(spearfish_score DESC, batch), github_repository_metrics(star_growth_rate DESC, created_at DESC), research_sessions(company_id, created_at DESC).",
+            "status": "pending",
+            "testStrategy": "Test index creation doesn't lock tables, verify query performance improvements, check index usage with EXPLAIN ANALYZE"
+          },
+          {
+            "id": 3,
+            "title": "Fix Companies Table RLS Policies",
+            "description": "Implement proper RLS policies for companies table",
+            "dependencies": [2],
+            "details": "Create RLS policy for companies table allowing public SELECT and authenticated UPDATE. Policy should allow all users to read company data but only authenticated users with proper permissions to update company information.",
+            "status": "pending",
+            "testStrategy": "Test unauthenticated users can read companies, verify only authorized users can update, test edge cases and permission boundaries"
+          },
+          {
+            "id": 4,
+            "title": "Add Artifacts Table RLS Policies",
+            "description": "Implement owner-only access policies for artifacts table",
+            "dependencies": [3],
+            "details": "Create RLS policy for artifacts table with FOR ALL USING (created_by = auth.uid()) and WITH CHECK (created_by = auth.uid()). Ensure users can only access artifacts they created.",
+            "status": "pending",
+            "testStrategy": "Test users can only access their own artifacts, verify policy blocks access to other users' artifacts, test with multiple user scenarios"
+          },
+          {
+            "id": 5,
+            "title": "Create Database Backup Script",
+            "description": "Implement automated database backup and restore procedures",
+            "dependencies": [],
+            "details": "Create scripts/backup-database.sh with pg_dump command and S3 upload. Include restore procedures and documentation. Set up automated daily backups if possible.",
+            "status": "pending",
+            "testStrategy": "Test backup script creates valid dumps, verify restore procedures work correctly, test backup scheduling and monitoring"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "API Usage and Cost Plan",
+        "description": "Reduce API costs by 80% through caching and model optimization. Success = avg cost per request < $0.02.",
+        "details": "Inventory all AI API calls including Perplexity research queries and OpenAI classification/generation. Implement Redis caching with configurable TTL for expensive operations. Add cost guards to prevent budget overruns with daily user limits. Create model selection matrix optimizing for cost vs quality. Add timeout and retry logic with exponential backoff. Implement usage logging for cost tracking and optimization.",
+        "testStrategy": "Test cost guards prevent overruns, verify caching reduces API calls, validate cost tracking accuracy, test timeout and retry mechanisms",
+        "priority": "high",
+        "dependencies": [3],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Inventory and Analyze API Usage",
+            "description": "Document all AI API calls with cost analysis",
+            "dependencies": [],
+            "details": "Create inventory of Perplexity calls (src/lib/perplexity-research-service.ts:141-180, 8000 tokens/call), OpenAI gpt-4o calls (src/lib/agent-email-generator.ts:233,381, 2000 tokens/call), OpenAI gpt-4o-mini calls (src/lib/company-research-service.ts:655, 500 tokens/call). Calculate current costs and usage patterns.",
+            "status": "pending",
+            "testStrategy": "Verify all API calls are documented with accurate token counts and costs, validate usage patterns match production data"
+          },
+          {
+            "id": 2,
+            "title": "Implement Redis Caching Service",
+            "description": "Create caching layer with configurable TTL for expensive operations",
+            "dependencies": [],
+            "details": "Create src/lib/cache-service.ts with Redis client using Upstash. Implement getCachedOrGenerate method with configurable TTL. Add cache invalidation and warming strategies. Include cache hit/miss metrics.",
+            "status": "pending",
+            "testStrategy": "Test caching reduces API calls, verify TTL expiration works correctly, validate cache invalidation scenarios, test cache performance"
+          },
+          {
+            "id": 3,
+            "title": "Add API Cost Guards",
+            "description": "Implement cost monitoring and budget protection",
+            "dependencies": [2],
+            "details": "Create src/lib/api-cost-guard.ts with daily cost tracking per user. Implement checkApiCost function that prevents operations when daily limits are exceeded. Add Redis-based cost tracking with daily key rotation.",
+            "status": "pending",
+            "testStrategy": "Test cost guards block expensive operations when limits reached, verify daily limit resets work correctly, validate cost calculations are accurate"
+          },
+          {
+            "id": 4,
+            "title": "Optimize Model Selection Matrix",
+            "description": "Create cost-optimized model selection for different use cases",
+            "dependencies": [1],
+            "details": "Define MODEL_SELECTION object mapping use cases to optimal models: research_deep (perplexity), research_quick (gpt-4o-mini), email_generation (gpt-4o-mini), classification (gpt-3.5-turbo), extraction (gpt-4o-mini). Implement automatic model selection based on operation type.",
+            "status": "pending",
+            "testStrategy": "Test model selection chooses cost-effective options, verify quality remains acceptable with cheaper models, validate cost savings calculations"
+          },
+          {
+            "id": 5,
+            "title": "Add Timeout and Retry Logic",
+            "description": "Implement robust error handling with exponential backoff",
+            "dependencies": [],
+            "details": "Create callWithRetry function with Promise.race for timeouts (30s default) and exponential backoff retry logic (max 3 retries). Apply to all external API calls. Include jitter to prevent thundering herd.",
+            "status": "pending",
+            "testStrategy": "Test timeout handling prevents hanging requests, verify retry logic works with exponential backoff, validate jitter prevents simultaneous retries"
+          },
+          {
+            "id": 6,
+            "title": "Implement Usage Logging",
+            "description": "Add comprehensive logging for cost tracking and optimization",
+            "dependencies": [3],
+            "details": "Create usage logging middleware for API routes. Log user_id, endpoint, model, tokens, cost_usd, and timestamp to api_usage_logs table. Include request correlation IDs for debugging.",
+            "status": "pending",
+            "testStrategy": "Test usage logs capture accurate cost data, verify log correlation works across requests, validate analytics and reporting capabilities"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Request Flow and Performance",
+        "description": "Reduce P95 latency to < 2s. Success = Lighthouse performance score > 90, no N+1 queries.",
+        "details": "Convert heavy components to server components starting with 1571-line SpearThisTab.tsx. Implement streaming for long AI responses. Add HTTP cache headers for static content. Implement rate limiting with sliding window. Fix N+1 queries in database operations by implementing batch loading. Add connection pooling and query optimization.",
+        "testStrategy": "Test Lighthouse scores meet targets, verify streaming responses work correctly, validate rate limiting blocks abuse, confirm N+1 queries are eliminated",
+        "priority": "medium",
+        "dependencies": [4],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Decompose Large Components",
+            "description": "Split SpearThisTab.tsx (1571 lines) into server and client components",
+            "dependencies": [],
+            "details": "Split src/components/company/tabs/SpearThisTab.tsx into SpearThisTab.server.tsx for data fetching and SpearThisTab.client.tsx for interactivity only. Separate concerns and reduce client bundle size.",
+            "status": "pending",
+            "testStrategy": "Test component splitting maintains functionality, verify server/client boundary is correct, validate bundle size reduction"
+          },
+          {
+            "id": 2,
+            "title": "Implement Streaming for AI Responses",
+            "description": "Add streaming capability for long-running AI operations",
+            "dependencies": [],
+            "details": "Modify src/app/api/companies/[id]/research/start/route.ts to return streaming responses using ReadableStream. Implement chunk-based response generation for real-time progress updates.",
+            "status": "pending",
+            "testStrategy": "Test streaming responses provide real-time updates, verify proper error handling in streams, validate client receives chunks correctly"
+          },
+          {
+            "id": 3,
+            "title": "Add HTTP Cache Headers",
+            "description": "Implement caching headers for static and semi-static content",
+            "dependencies": [],
+            "details": "Add Cache-Control headers to src/app/api/companies/route.ts with public, s-maxage=300, stale-while-revalidate=600. Add CDN-Cache-Control for Vercel edge caching.",
+            "status": "pending",
+            "testStrategy": "Test cache headers are correctly set, verify CDN caching works as expected, validate cache invalidation scenarios"
+          },
+          {
+            "id": 4,
+            "title": "Implement Rate Limiting",
+            "description": "Add rate limiting with sliding window algorithm",
+            "dependencies": [],
+            "details": "Create src/lib/rate-limiter.ts using Upstash Ratelimit with sliding window (10 requests per minute). Apply to API routes with proper error responses and retry headers.",
+            "status": "pending",
+            "testStrategy": "Test rate limiting blocks excessive requests, verify sliding window algorithm works correctly, validate proper HTTP status codes and headers"
+          },
+          {
+            "id": 5,
+            "title": "Fix N+1 Query Problems",
+            "description": "Optimize database queries to eliminate N+1 patterns",
+            "dependencies": [],
+            "details": "Fix src/lib/spearfish-database-service.ts:142 by implementing batch loading. Replace sequential processing with bulk queries using Supabase .in() operations. Add proper data grouping and relationship loading.",
+            "status": "pending",
+            "testStrategy": "Test query count reduces significantly, verify data integrity with batch loading, validate performance improvements with large datasets"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "UI and Accessibility Pass",
+        "description": "Achieve Lighthouse scores: Performance 90+, Accessibility 95+, SEO 100. Success = WCAG AA compliance.",
+        "details": "Fix accessibility violations in components including missing alt text, keyboard navigation, and form labels. Add loading states to all data-fetching components. Implement SEO metadata with dynamic content. Optimize images with proper lazy loading and blur placeholders. Create sitemap generator and fix layout shift issues. Consolidate button variants and improve error messages.",
+        "testStrategy": "Run Lighthouse audits and achieve target scores, test keyboard navigation works completely, verify screen reader compatibility, validate SEO improvements",
+        "priority": "medium",
+        "dependencies": [5],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix Accessibility Violations",
+            "description": "Address WCAG AA compliance issues in UI components",
+            "dependencies": [],
+            "details": "Fix missing alt text in CompanyCard.tsx:45, add keyboard navigation to FilterSidebar.tsx:78, add form labels to SpearThisTab.tsx:234, improve contrast ratio in DashboardClient.tsx:112. Add aria-labels and proper focus management.",
+            "status": "pending",
+            "testStrategy": "Test with screen readers, verify keyboard navigation works completely, validate color contrast meets WCAG AA standards, test with accessibility audit tools"
+          },
+          {
+            "id": 2,
+            "title": "Add Loading and Error States",
+            "description": "Implement consistent loading and error states across all data-fetching components",
+            "dependencies": [],
+            "details": "Add loading states to all 12 data-fetching components using skeleton patterns. Create ErrorState component with retry functionality. Implement EmptyState component for no-data scenarios. Add to CompanyProfileClient.tsx and other key components.",
+            "status": "pending",
+            "testStrategy": "Test loading states display correctly during data fetching, verify error states show actionable messages, validate empty states provide clear guidance"
+          },
+          {
+            "id": 3,
+            "title": "Implement SEO Metadata",
+            "description": "Add dynamic SEO metadata for better search engine optimization",
+            "dependencies": [],
+            "details": "Add generateMetadata function to src/app/company/[id]/page.tsx with dynamic titles, descriptions, OpenGraph tags, and Twitter cards. Include company-specific information like name, score, and logo.",
+            "status": "pending",
+            "testStrategy": "Test metadata generates correctly for different companies, verify OpenGraph preview works on social platforms, validate Twitter card rendering"
+          },
+          {
+            "id": 4,
+            "title": "Optimize Images and Performance",
+            "description": "Implement proper image optimization and lazy loading",
+            "dependencies": [],
+            "details": "Update Image components in CompanyCard.tsx with proper width, height, loading='lazy', placeholder='blur', and blurDataURL. Optimize image formats and sizes for different screen densities.",
+            "status": "pending",
+            "testStrategy": "Test image loading performance, verify lazy loading works correctly, validate blur placeholders display before image load, check different screen densities"
+          },
+          {
+            "id": 5,
+            "title": "Create Sitemap and Fix Layout Shift",
+            "description": "Implement sitemap generation and eliminate cumulative layout shift",
+            "dependencies": [],
+            "details": "Create src/app/sitemap.ts that generates sitemap with company pages and proper change frequencies. Fix layout shift in src/app/globals.css with font-display: swap and proper font loading strategies.",
+            "status": "pending",
+            "testStrategy": "Test sitemap generates correctly with all company pages, verify search engines can crawl sitemap, measure and validate layout shift reduction"
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Testing Plan",
+        "description": "Achieve 80% code coverage on business logic, 100% on API routes. Success = CI passes on every commit.",
+        "details": "Expand existing unit tests for scoring service. Add comprehensive API route tests with proper mocking. Create E2E tests with Playwright for critical user journeys. Add test fixtures and update CI to run all test suites. Mock external APIs properly to avoid flaky tests and API costs during testing.",
+        "testStrategy": "Achieve target code coverage metrics, verify all tests pass consistently, validate E2E tests cover critical user paths, ensure proper test isolation",
+        "priority": "medium",
+        "dependencies": [6],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Expand Unit Tests for Business Logic",
+            "description": "Add comprehensive unit tests for scoring algorithm and core services",
+            "dependencies": [],
+            "details": "Expand src/lib/__tests__/spearfish-scoring-service.test.ts with edge cases and missing data scenarios. Add tests for github-service.ts, company-research-service.ts, and other core business logic. Target 80% coverage for lib/ directory.",
+            "status": "pending",
+            "testStrategy": "Verify unit tests cover all business logic branches, test edge cases and error scenarios, validate mocking of external dependencies"
+          },
+          {
+            "id": 2,
+            "title": "Add API Route Tests",
+            "description": "Create comprehensive tests for all API endpoints",
+            "dependencies": [],
+            "details": "Create src/app/api/companies/__tests__/route.test.ts and similar test files for all API routes. Test request validation, authentication, authorization, and response formats. Mock external API calls to avoid costs.",
+            "status": "pending",
+            "testStrategy": "Test all API routes with valid and invalid inputs, verify authentication and authorization work correctly, validate error responses and status codes"
+          },
+          {
+            "id": 3,
+            "title": "Create E2E Tests with Playwright",
+            "description": "Implement end-to-end tests for critical user journeys",
+            "dependencies": [],
+            "details": "Create tests/e2e/company-discovery.spec.ts for main user flow: discovery → research → artifacts → email generation. Test complete user journey from search to email template creation.",
+            "status": "pending",
+            "testStrategy": "Test complete user journeys work end-to-end, verify all major features function correctly, validate cross-browser compatibility"
+          },
+          {
+            "id": 4,
+            "title": "Add Test Fixtures and Mock Data",
+            "description": "Create comprehensive test fixtures and mocking infrastructure",
+            "dependencies": [],
+            "details": "Create tests/fixtures/companies.json with sample company data. Implement proper mocking for Perplexity API, OpenAI API, and GitHub API to avoid costs and improve test reliability.",
+            "status": "pending",
+            "testStrategy": "Test fixtures provide realistic data for testing, verify mocks accurately simulate real API responses, validate test isolation"
+          },
+          {
+            "id": 5,
+            "title": "Update CI for Test Execution",
+            "description": "Configure CI to run all test suites with coverage reporting",
+            "dependencies": [1, 2, 3],
+            "details": "Update .github/workflows/ci.yml to run npm test with coverage and npx playwright test. Configure coverage thresholds and reporting. Add test result artifacts and notifications.",
+            "status": "pending",
+            "testStrategy": "Test CI runs all test suites successfully, verify coverage reporting works correctly, validate test failures block deployments"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Observability and Incident Response",
+        "description": "Detect and resolve issues within 5 minutes. Success = MTTR < 30 minutes, error rate < 0.1%.",
+        "details": "Add structured logging with Pino replacing all console statements. Implement OpenTelemetry tracing for request correlation. Create metrics collection for API latency, costs, and errors. Set up alerting for high error rates and cost spikes. Create incident runbook with specific response procedures for common issues like API outages and cost overruns.",
+        "testStrategy": "Test logging captures all necessary context, verify tracing works across service boundaries, validate alerts fire correctly for defined thresholds, test incident response procedures",
+        "priority": "medium",
+        "dependencies": [7],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Structured Logging",
+            "description": "Replace all console statements with structured logging using Pino",
+            "dependencies": [],
+            "details": "Create src/lib/logger.ts with Pino configuration including proper log levels, formatting, and context injection. Replace all console.log, console.warn, console.error with structured logger calls throughout codebase.",
+            "status": "pending",
+            "testStrategy": "Test structured logs include proper context and correlation IDs, verify log levels work correctly, validate log formatting and searchability"
+          },
+          {
+            "id": 2,
+            "title": "Add OpenTelemetry Tracing",
+            "description": "Implement distributed tracing for request correlation and performance monitoring",
+            "dependencies": [],
+            "details": "Create src/lib/tracing.ts with OpenTelemetry SDK configuration. Add automatic instrumentation for HTTP requests, database queries, and external API calls. Configure trace export and sampling.",
+            "status": "pending",
+            "testStrategy": "Test traces capture request flows correctly, verify span correlation works across service boundaries, validate trace sampling and export"
+          },
+          {
+            "id": 3,
+            "title": "Create Metrics Collection",
+            "description": "Implement metrics for API latency, costs, and error rates",
+            "dependencies": [],
+            "details": "Create src/lib/metrics.ts with Prometheus-compatible metrics including API latency histograms, cost counters by provider/model, and error rate gauges. Add metrics middleware for automatic collection.",
+            "status": "pending",
+            "testStrategy": "Test metrics collection captures accurate data, verify metric labels and dimensions work correctly, validate metric export and aggregation"
+          },
+          {
+            "id": 4,
+            "title": "Set Up Alerting Rules",
+            "description": "Configure alerts for high error rates, cost spikes, and service outages",
+            "dependencies": [3],
+            "details": "Create monitoring/alerts.yml with alert rules for error rate > 0.01, API cost > $100/hour, and service availability. Configure notification channels and escalation policies.",
+            "status": "pending",
+            "testStrategy": "Test alerts fire correctly for defined thresholds, verify notification delivery works, validate alert resolution and acknowledgment"
+          },
+          {
+            "id": 5,
+            "title": "Create Incident Runbook",
+            "description": "Document incident response procedures for common issues",
+            "dependencies": [],
+            "details": "Create docs/incident-runbook.md with specific procedures for high API costs, service outages, database issues, and authentication problems. Include commands, contact information, and escalation procedures.",
+            "status": "pending",
+            "testStrategy": "Test runbook procedures are accurate and complete, verify all required information is included, validate team can follow procedures effectively"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Product Fit and Onboarding Polish",
+        "description": "Increase activation rate to 40%. Success = 80% of users complete onboarding, 40% perform first research.",
+        "details": "Define clear ICP and JTBD in product strategy documentation. Simplify onboarding flow to reduce friction. Add progress tracking for onboarding completion. Implement pricing test with free tier limitations and upgrade prompts. Create smooth user journey from signup to first value delivery with minimal steps.",
+        "testStrategy": "Test onboarding completion rates meet targets, verify pricing test drives conversions, validate user journey reduces time to first value, measure activation metrics",
+        "priority": "low",
+        "dependencies": [8],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define ICP and Product Strategy",
+            "description": "Document ideal customer profile and jobs-to-be-done",
+            "dependencies": [],
+            "details": "Create docs/product-strategy.md defining ICP as AI/ML engineers at Series A-C companies and JTBD as finding and evaluating high-growth AI startups. Include target market analysis and positioning strategy.",
+            "status": "pending",
+            "testStrategy": "Verify product strategy aligns with current feature set, validate ICP definition matches actual user behavior, test messaging resonates with target audience"
+          },
+          {
+            "id": 2,
+            "title": "Simplify Onboarding Flow",
+            "description": "Create streamlined onboarding with minimal friction",
+            "dependencies": [],
+            "details": "Create src/components/onboarding/OnboardingFlow.tsx with 3 simple steps: select interests, preview top companies, try first research. Remove unnecessary form fields and complexity.",
+            "status": "pending",
+            "testStrategy": "Test onboarding completion rates improve, verify user drop-off points are eliminated, validate time to first value is minimized"
+          },
+          {
+            "id": 3,
+            "title": "Add Progress Tracking",
+            "description": "Implement onboarding progress tracking and analytics",
+            "dependencies": [2],
+            "details": "Create src/lib/onboarding-service.ts with progress tracking functions. Store onboarding state in user_onboarding table with current step and completion flags. Add analytics for funnel optimization.",
+            "status": "pending",
+            "testStrategy": "Test progress tracking captures user journey accurately, verify analytics provide actionable insights, validate completion detection works correctly"
+          },
+          {
+            "id": 4,
+            "title": "Implement Pricing Test",
+            "description": "Add pricing page with free tier and upgrade prompts",
+            "dependencies": [],
+            "details": "Create src/app/pricing/page.tsx with three tiers: Free (5 researches/month), Pro ($29/month), Team ($99/month). Add usage tracking and upgrade prompts when limits are reached.",
+            "status": "pending",
+            "testStrategy": "Test pricing page converts visitors to paid plans, verify usage limits are enforced correctly, validate upgrade prompts appear at optimal times"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Release and Rollout",
+        "description": "Deploy safely with < 0.1% error rate. Success = zero rollbacks, smooth 10-50-100% rollout.",
+        "details": "Set up preview deploys for all pull requests. Create staging environment with proper data seeding. Implement feature flags for gradual rollout. Create rollback procedures and monitoring. Add deployment automation and release notes generation.",
+        "testStrategy": "Test preview deploys work correctly, verify staging environment matches production, validate feature flags enable safe rollout, test rollback procedures work quickly",
+        "priority": "low",
+        "dependencies": [9],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Preview Deploys",
+            "description": "Configure automatic preview deployments for pull requests",
+            "dependencies": [],
+            "details": "Update vercel.json with GitHub integration settings enabling automatic preview deploys. Configure branch protection rules and deployment contexts. Add preview URL comments to pull requests.",
+            "status": "pending",
+            "testStrategy": "Test preview deploys create correctly for new pull requests, verify preview URLs are accessible and functional, validate cleanup of old previews"
+          },
+          {
+            "id": 2,
+            "title": "Create Staging Environment",
+            "description": "Set up staging environment with proper data seeding",
+            "dependencies": [],
+            "details": "Create .env.staging with staging database and API keys. Implement data seeding scripts for realistic test data. Configure staging deployment pipeline with proper environment variables.",
+            "status": "pending",
+            "testStrategy": "Test staging environment mirrors production functionality, verify data seeding creates realistic test scenarios, validate environment isolation"
+          },
+          {
+            "id": 3,
+            "title": "Implement Feature Flags",
+            "description": "Add feature flag system for gradual rollout",
+            "dependencies": [],
+            "details": "Create src/lib/feature-flags.ts with Redis-based feature flag storage. Implement user-based and percentage-based rollouts. Add admin interface for flag management.",
+            "status": "pending",
+            "testStrategy": "Test feature flags enable/disable features correctly, verify rollout percentages work as expected, validate flag management interface"
+          },
+          {
+            "id": 4,
+            "title": "Create Rollback Procedures",
+            "description": "Implement quick rollback capabilities and procedures",
+            "dependencies": [],
+            "details": "Create scripts/rollback.sh with automated rollback to previous version. Document rollback procedures and decision criteria. Add monitoring for rollback triggers.",
+            "status": "pending",
+            "testStrategy": "Test rollback procedures work quickly and safely, verify database migrations can be safely reverted, validate rollback monitoring and alerts"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Database Check (Detailed)",
+        "description": "Optimize query performance and ensure data integrity. Success = all queries < 100ms, zero data corruption.",
+        "details": "Create comprehensive database schema documentation with relationship diagrams. Add strategic indexes for query optimization including companies batch/score index, research sessions user/created index, and artifacts company/type index. Implement comprehensive RLS policies for all tables with proper SELECT, INSERT, UPDATE, DELETE permissions. Analyze slow queries and provide optimization recommendations.",
+        "testStrategy": "Verify all indexes improve query performance measurably, test RLS policies prevent unauthorized access correctly, validate schema documentation is accurate and complete",
+        "priority": "high",
+        "dependencies": [3],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Document Database Schema",
+            "description": "Create comprehensive schema documentation with entity relationships",
+            "dependencies": [],
+            "details": "Document current schema with companies (15 columns) relating to github_repositories, github_repository_metrics, research_sessions, artifacts, score_history, and founders. Include user_profiles relationships and all foreign key constraints.",
+            "status": "pending",
+            "testStrategy": "Verify schema documentation matches actual database structure, validate all relationships are documented correctly, test documentation helps new developers understand data model"
+          },
+          {
+            "id": 2,
+            "title": "Add Strategic Database Indexes",
+            "description": "Create indexes for query optimization based on usage patterns",
+            "dependencies": [],
+            "details": "Create migration supabase/migrations/20250117_optimization_indexes.sql with indexes: companies(batch, spearfish_score DESC), research_sessions(user_id, created_at DESC), artifacts(company_id, type, created_at DESC), github_metrics(repository_id, recorded_at DESC).",
+            "status": "pending",
+            "testStrategy": "Test indexes improve query performance with EXPLAIN ANALYZE, verify index usage in common queries, validate index creation doesn't impact write performance significantly"
+          },
+          {
+            "id": 3,
+            "title": "Implement Comprehensive RLS Policies",
+            "description": "Create complete RLS policy set for all tables",
+            "dependencies": [2],
+            "details": "Create RLS policies for companies (public SELECT, authenticated UPDATE), research_sessions (user owns sessions), artifacts (creator access only). Include WITH CHECK clauses for INSERT/UPDATE operations.",
+            "status": "pending",
+            "testStrategy": "Test RLS policies prevent unauthorized access across all scenarios, verify WITH CHECK clauses work correctly, validate policy performance doesn't impact queries significantly"
+          },
+          {
+            "id": 4,
+            "title": "Analyze and Optimize Slow Queries",
+            "description": "Identify and optimize performance bottlenecks in database queries",
+            "dependencies": [1, 2],
+            "details": "Analyze slow query in src/app/api/companies/route.ts:134 (450ms → 25ms with index). Document query optimization recommendations and implement performance improvements.",
+            "status": "pending",
+            "testStrategy": "Test query optimizations provide measurable performance improvements, verify optimized queries maintain data integrity, validate performance gains under load"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "UI Check (Detailed)",
+        "description": "Fix all critical accessibility and UX issues. Success = 0 WCAG violations, 90+ Lighthouse score.",
+        "details": "Fix accessibility violations including missing alt text, keyboard navigation issues, and form labels. Optimize navigation flow from 7 steps to 4 steps for better user experience. Consolidate 23 button variants into 3 standardized variants. Optimize mobile performance and reduce bundle size. Improve error messages to be more actionable and user-friendly.",
+        "testStrategy": "Achieve target Lighthouse scores across all metrics, verify complete keyboard navigation works, test screen reader compatibility, validate mobile performance meets standards",
+        "priority": "medium",
+        "dependencies": [6],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Fix Accessibility Violations",
+            "description": "Address specific WCAG violations found in accessibility audit",
+            "dependencies": [],
+            "details": "Fix CompanyCard.tsx:45 missing alt text, add keyboard navigation to FilterSidebar.tsx:78, add form labels to SpearThisTab.tsx:234, improve contrast ratio in DashboardClient.tsx:112. Ensure all interactive elements are keyboard accessible.",
+            "status": "pending",
+            "testStrategy": "Test all fixes with screen readers and keyboard navigation, verify color contrast meets WCAG AA standards, validate focus management and tab order"
+          },
+          {
+            "id": 2,
+            "title": "Optimize Navigation Flow",
+            "description": "Reduce user journey from 7 steps to 4 steps",
+            "dependencies": [],
+            "details": "Streamline navigation from Home → Sign In → Dashboard → Search → Filter → Company → Research (7 steps) to Home → Dashboard (auto-auth) → Company → Research (4 steps). Remove unnecessary intermediate pages and friction points.",
+            "status": "pending",
+            "testStrategy": "Test new navigation flow reduces time to first value, verify auto-authentication works correctly, validate user journey optimization maintains functionality"
+          },
+          {
+            "id": 3,
+            "title": "Consolidate Button Components",
+            "description": "Standardize button variants from 23 to 3 consistent options",
+            "dependencies": [],
+            "details": "Create src/components/ui/Button.tsx with 3 variants (primary, secondary, ghost) and standard sizes. Replace all existing button implementations with standardized component.",
+            "status": "pending",
+            "testStrategy": "Test button consolidation doesn't break existing layouts, verify new button component covers all use cases, validate consistent styling across application"
+          },
+          {
+            "id": 4,
+            "title": "Optimize Mobile Performance",
+            "description": "Improve mobile performance and reduce bundle size",
+            "dependencies": [],
+            "details": "Add next.config.js optimizations including optimizeCss: true and optimizePackageImports for @heroicons/react and @supabase/supabase-js. Implement code splitting and lazy loading for mobile.",
+            "status": "pending",
+            "testStrategy": "Test mobile performance improvements with Lighthouse mobile audits, verify bundle size reduction, validate loading performance on slow connections"
+          },
+          {
+            "id": 5,
+            "title": "Improve Error Messages",
+            "description": "Make error messages more actionable and user-friendly",
+            "dependencies": [],
+            "details": "Replace generic error messages with specific, actionable guidance. Create ERROR_MESSAGES object with clear instructions for rate limits, API costs, authentication, and network issues.",
+            "status": "pending",
+            "testStrategy": "Test error messages provide clear guidance for resolution, verify all error scenarios have helpful messages, validate error message tone and clarity"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Go or No-Go on Rebuild",
+        "description": "Make final refactor vs rebuild decision based on evidence. Success = clear decision with team alignment.",
+        "details": "Evaluate all blocking defects identified during refactor process. Score refactor vs rebuild on effort, risk, time to revenue, tech debt reduction, and team impact factors. Make final recommendation with clear rationale. Document what to preserve and what to refactor heavily. Ensure team alignment on chosen approach.",
+        "testStrategy": "Validate decision criteria are objective and complete, verify team understands and agrees with recommendation, confirm decision timeline is realistic",
+        "priority": "high",
+        "dependencies": [11, 12],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Evaluate Blocking Defects",
+            "description": "Assess all issues found during refactor to identify true blockers",
+            "dependencies": [],
+            "details": "Review all issues identified in previous steps to determine which are blocking vs manageable. Document any architectural limitations that prevent refactoring. Assess technical debt that cannot be resolved through refactoring.",
+            "status": "pending",
+            "testStrategy": "Verify all major issues are categorized correctly, validate blocking defects truly prevent refactoring, confirm issue severity assessments are accurate"
+          },
+          {
+            "id": 2,
+            "title": "Score Refactor vs Rebuild Decision Matrix",
+            "description": "Quantitatively evaluate refactor vs rebuild options",
+            "dependencies": [1],
+            "details": "Score both options on: Effort (4 weeks vs 12 weeks), Risk (Low vs High), Time to Revenue (2 weeks vs 8 weeks), Tech Debt (-60% vs -100%), Team Morale (Preserved vs Reset). Calculate weighted scores for objective comparison.",
+            "status": "pending",
+            "testStrategy": "Verify scoring criteria are relevant and weighted appropriately, validate time estimates are realistic, confirm risk assessments account for all factors"
+          },
+          {
+            "id": 3,
+            "title": "Make Final Recommendation",
+            "description": "Provide clear refactor vs rebuild recommendation with rationale",
+            "dependencies": [2],
+            "details": "Based on scoring matrix, provide single clear recommendation (expected: REFACTOR). Document rationale including preserved components (scoring algorithm, database schema, auth integration) and heavily refactored areas (API costs, component architecture, caching, testing).",
+            "status": "pending",
+            "testStrategy": "Verify recommendation is supported by evidence and analysis, validate rationale addresses all major concerns, confirm recommendation is actionable"
+          },
+          {
+            "id": 4,
+            "title": "Document Preservation and Refactor Plan",
+            "description": "Specify what to preserve and what to refactor heavily",
+            "dependencies": [3],
+            "details": "Document components to preserve: Spearfish scoring algorithm, database schema, Supabase+Clerk integration, core UI components. Document heavy refactor areas: API cost control, component decomposition, caching implementation, test coverage expansion.",
+            "status": "pending",
+            "testStrategy": "Verify preservation plan maintains working functionality, validate refactor plan addresses all identified issues, confirm plan is realistic for team capacity"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-01-15T10:00:00.000Z",
+      "updated": "2025-01-15T10:00:00.000Z",
+      "description": "Refactor tasks for Spearfish AI application following comprehensive audit and analysis"
+    }
+  }
+}

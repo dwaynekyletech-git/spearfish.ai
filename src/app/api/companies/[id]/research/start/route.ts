@@ -1,25 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { z } from 'zod';
 import { getGlobalResearchService } from '@/lib/company-research-service';
 import { createServiceClient } from '@/lib/supabase-server';
+import { verifyCsrf, needsCsrfProtection, getCsrfConfig } from '@/lib/security/csrf-protection';
+import { CompanyIdParamsSchema } from '@/lib/validation/common';
+import { StartResearchRequestSchema } from '@/lib/validation/research';
+import Logger, { logApiRequest, logApiResponse, logApiError } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const startTime = Date.now();
+  
   try {
+    // Start API request logging
+    logApiRequest('GET', `/api/companies/${params.id}/research/start`);
+    
+    // Validate parameters
+    const validatedParams = CompanyIdParamsSchema.parse(params);
+    const companyId = validatedParams.id;
+    
     const { userId } = await auth();
     
     if (!userId) {
+      logApiError('Authentication required', 401);
       return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
+        { success: false, error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const companyId = params.id;
+    Logger.setContext({ userId, companyId });
     
-    return NextResponse.json({
+    const response = {
       success: true,
       message: 'Research configuration endpoint',
       data: {
@@ -54,18 +69,36 @@ export async function GET(
           save_to_database: true,
         },
       }
-    });
+    };
+
+    logApiResponse(200, Date.now() - startTime);
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Research configuration failed:', error);
+    if (error instanceof z.ZodError) {
+      logApiError('Validation failed', 400);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Validation failed', 
+          details: error.errors 
+        },
+        { status: 400 }
+      );
+    }
+
+    logApiError(error instanceof Error ? error.message : 'Unknown error occurred', 500);
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Internal Server Error', 
         message: error instanceof Error ? error.message : 'Unknown error occurred' 
       },
       { status: 500 }
     );
+  } finally {
+    Logger.clearContext();
   }
 }
 
@@ -73,18 +106,36 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const startTime = Date.now();
+  
   try {
+    // Start API request logging
+    logApiRequest('POST', `/api/companies/${params.id}/research/start`);
+    
+    // Validate parameters
+    const validatedParams = CompanyIdParamsSchema.parse(params);
+    const companyId = validatedParams.id;
+
+    // Apply CSRF protection for mutation requests
+    if (needsCsrfProtection(request)) {
+      verifyCsrf(request, getCsrfConfig());
+    }
+    
     const { userId } = await auth();
     
     if (!userId) {
+      logApiError('Authentication required', 401);
       return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
+        { success: false, error: 'Unauthorized', message: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    const companyId = params.id;
+    Logger.setContext({ userId, companyId });
+
+    // Parse and validate request body
     const body = await request.json();
+    const validatedRequest = StartResearchRequestSchema.parse(body);
     
     // Map research types to template IDs
     const templateMap: Record<string, string[]> = {
@@ -101,26 +152,26 @@ export async function POST(
       ]
     };
 
-    const templateIds = templateMap[body.research_type] || templateMap['comprehensive'];
+    const templateIds = templateMap[validatedRequest.research_type] || templateMap['comprehensive'];
     
     // Get shared research service instance
     const researchService = getGlobalResearchService();
     
-    // Prepare research configuration
+    // Prepare research configuration using validated request
     const config = {
-      templateIds,
+      templateIds: validatedRequest.config?.template_ids || templateIds,
       variables: {
-        companyName: body.company_data?.name || 'Unknown Company',
-        website: body.company_data?.website,
-        industry: body.company_data?.industry,
-        location: body.company_data?.location
+        companyName: validatedRequest.company_data?.name || 'Unknown Company',
+        website: validatedRequest.company_data?.website,
+        industry: validatedRequest.company_data?.industry,
+        location: validatedRequest.company_data?.location
       },
-      priority: 'high' as const,
+      priority: validatedRequest.config?.priority || 'medium' as const,
       maxConcurrentQueries: 2,
-      maxCostUsd: 5.0,
-      timeoutMs: 120000,
-      enableSynthesis: true,
-      saveToDatabase: true
+      maxCostUsd: validatedRequest.config?.max_cost_usd || 5.0,
+      timeoutMs: validatedRequest.config?.timeout_ms || 120000,
+      enableSynthesis: validatedRequest.config?.enable_synthesis ?? true,
+      saveToDatabase: validatedRequest.config?.save_to_database ?? true
     };
 
     // Get user profile ID from Clerk user ID
@@ -132,9 +183,9 @@ export async function POST(
       .single()
 
     if (userError || !userProfile) {
-      console.error('Failed to get user profile:', userError)
+      Logger.error('Failed to get user profile', { userError });
       return NextResponse.json(
-        { error: 'User profile not found' },
+        { success: false, error: 'User profile not found' },
         { status: 404 }
       )
     }
@@ -146,13 +197,13 @@ export async function POST(
       config
     );
     
-    console.log(`Created research session: ${sessionId}`);
+    Logger.info('Created research session', { sessionId });
     
     // Check if session was actually created in progress tracker
     const testProgress = await researchService.getResearchProgress(sessionId);
-    console.log(`Session check in progress tracker:`, testProgress);
+    Logger.debug('Session check in progress tracker', { sessionId, testProgress });
     
-    return NextResponse.json({
+    const response = {
       success: true,
       message: 'Research session started successfully',
       session: {
@@ -162,19 +213,49 @@ export async function POST(
         total_queries: templateIds.length,
         completed_queries: 0,
         started_at: new Date().toISOString(),
-        research_type: body.research_type || 'comprehensive'
+        research_type: validatedRequest.research_type
       }
-    });
+    };
+
+    logApiResponse(200, Date.now() - startTime);
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Research start failed:', error);
+    if (error instanceof z.ZodError) {
+      logApiError('Validation failed', 400);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Validation failed', 
+          details: error.errors 
+        },
+        { status: 400 }
+      );
+    }
+    
+    if (error instanceof Error && error.name === 'CsrfValidationError') {
+      logApiError('CSRF validation failed', 403);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'CSRF validation failed',
+          message: 'Request origin validation failed'
+        },
+        { status: 403 }
+      );
+    }
+
+    logApiError(error instanceof Error ? error.message : 'Unknown error occurred', 500);
     
     return NextResponse.json(
       { 
+        success: false,
         error: 'Internal Server Error', 
         message: error instanceof Error ? error.message : 'Unknown error occurred' 
       },
       { status: 500 }
     );
+  } finally {
+    Logger.clearContext();
   }
 }

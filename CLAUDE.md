@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Spearfish AI** is an AI-powered Y Combinator company discovery and analysis platform that scores companies based on investment potential using the proprietary Spearfish scoring algorithm (0-10 scale).
+**Spearfish AI** is a strategic job preparation platform that enables targeted career advancement through the "spearfishing" methodology. Instead of competing with hundreds of applicants through traditional job boards, users create their own opportunities by demonstrating immediate value to carefully selected AI companies.
 
 ### Technology Stack
 - **Frontend**: Next.js 14 with App Router, React 18, TypeScript, Tailwind CSS
@@ -45,10 +45,14 @@ supabase db reset    # Reset local database
   - `company-research-service.ts`, `perplexity-research-service.ts` - AI research
   - `yc-api.ts`, `yc-database.ts` - Y Combinator data integration
 - **AI Classification**: `ai-classification-service.ts`, `integrated-ai-service.ts`
+- **Agent Services**:
+  - `agent-orchestrator.ts` - Coordinates AI agent workflows for opportunity creation
+  - `agent-email-generator.ts` - Generates personalized outreach emails
+  - `agent-project-generator.ts` - Creates targeted project ideas and proposals
 
 ### Component Organization (`src/components/`)
 - **Authentication**: `auth/` - Clerk auth guards and protected routes
-- **Company Profile**: `company/` - Company pages with tabbed navigation
+- **Company Profile**: `company/` - Company pages with tabbed navigation including "Spear This!" tab
 - **Dashboard**: `dashboard/` - Main discovery interface with filters
 - **UI Components**: `ui/` - Reusable components (Breadcrumb, SocialShare)
 
@@ -57,18 +61,25 @@ supabase db reset    # Reset local database
 - **GitHub Integration**: `/api/github/` - Repository sync and metrics
 - **Research System**: `/api/companies/[id]/research/` - AI-powered research
 - **Scoring**: `/api/scoring/` - Score calculations and history
+- **Agent Workflows**: `/api/companies/[id]/agent/workflow/` - AI agent orchestration
+- **Email Generation**: `/api/companies/[id]/emails/generate/` - Personalized outreach emails
+- **Project Artifacts**: `/api/companies/[id]/artifacts/generate/` - Project proposal creation
 - **Cron Jobs**: `/api/cron/` - Automated data sync tasks
 
 ## Database Schema
 
 ### Core Tables
-- **companies** - Y Combinator companies with Spearfish scores
+- **companies** - Target AI companies and their analysis data
 - **user_profiles** - User data synced with Clerk authentication
 - **github_repositories** - GitHub repo data and metrics tracking
 - **github_repository_metrics** - Historical star/fork growth data
 - **score_history** - Historical scoring with algorithm versioning
 - **research_sessions** - AI research session tracking
 - **founders** - Company team member data
+- **email_generations** - Generated outreach emails and templates
+- **project_artifacts** - Created project proposals and proof-of-concepts
+- **user_company_interactions** - Track user engagement with target companies
+- **company_analysis** - Detailed company research and market positioning data
 
 ### Key Features
 - **Row Level Security (RLS)** enabled for multi-tenant data access
@@ -93,7 +104,7 @@ NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
 NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
 
 # AI Services
-OPENAI_API_KEY="your_openai_api_key"        # For AI classification
+OPENAI_API_KEY="your_openai_api_key"        # For AI classification and agent services
 PERPLEXITY_API_KEY="your_perplexity_key"    # For research features
 
 # GitHub API (Optional)
@@ -107,6 +118,12 @@ GITHUB_TOKEN="your_github_token"            # For repository data
 2. **JWT templates** pass user context to Supabase
 3. **RLS policies** enforce data access based on user context
 4. **Auth guards** protect sensitive routes and components
+
+### Spearfishing Methodology
+- **Strategic Company Targeting**: Focus on quality opportunities over quantity applications
+- **Value-First Approach**: Demonstrate immediate impact potential before applying
+- **Personalized Outreach**: Custom proposals tailored to each company's specific needs
+- **AI-Powered Content Generation**: Automated creation of emails and project proposals
 
 ### Scoring Algorithm
 - **Weighted criteria** across 9 factors (batch, age, funding stage, etc.)
@@ -125,6 +142,12 @@ GITHUB_TOKEN="your_github_token"            # For repository data
 - **Session tracking** for research history
 - **Progress indicators** for long-running operations
 - **Template-based queries** for consistent research quality
+
+### Agent Orchestration
+- **Multi-step workflows** for opportunity creation
+- **Email generation** with personalized value propositions
+- **Project artifact creation** with targeted proposals
+- **Progress tracking** for complex AI operations
 
 ## MCP Server Configuration
 
@@ -209,12 +232,22 @@ Example test locations:
 - **Test GitHub API integrations** carefully due to rate limits
 - **Use path aliases** (`@/` → `src/`) for cleaner imports
 
-## Task Management Integration
+## Core Features
 
-This project uses Task Master AI for development planning. The current CLAUDE.md focuses on the Spearfish AI application itself, but Task Master commands remain available for project management:
+### Spearfishing Methodology
+- **Strategic Company Targeting**: Focus on quality opportunities over quantity applications
+- **Value-First Approach**: Demonstrate immediate impact potential before applying
+- **Personalized Outreach**: Custom proposals tailored to each company's specific needs
+- **Proactive Opportunity Creation**: Generate your own opportunities instead of waiting for job postings
 
-- `task-master list` - View current development tasks
-- `task-master next` - Get next task to work on
-- `task-master show <id>` - View specific task details
+### AI-Powered Company Research
+- **Deep Company Analysis**: Comprehensive research into target AI companies using advanced AI models
+- **Market Positioning**: Understand company challenges, goals, and technology stack
+- **Competitive Landscape**: Analyze company positioning within the AI industry
+- **Session Tracking**: Maintain research history and insights for each target company
 
-Task Master integration is configured via `.taskmaster/` directory and MCP servers.
+### Project & Email Generation
+- **Targeted Project Ideas**: AI-generated project proposals that address specific company needs
+- **Proof-of-Concept Creation**: Develop compelling demonstrations of your value proposition
+- **Personalized Email Outreach**: Craft professional emails that showcase understanding and immediate value
+- **Artifact Management**: Organize and track all generated materials for each opportunity

@@ -97,7 +97,7 @@ export function CompanyDiscoveryClient({
         searchParams.append('minScore', minScore.toString());
       }
 
-      const response = await fetch(`/api/companies?${searchParams}`);
+      const response = await fetch(`/api/company-data?${searchParams}`);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

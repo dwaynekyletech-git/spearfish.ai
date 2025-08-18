@@ -8,6 +8,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ProjectIdeasDisplay } from '../ProjectIdeasDisplay';
+import { EmailGenerationInterface } from '../EmailGenerationInterface';
 
 interface SpearThisTabProps {
   company: any;
@@ -83,6 +86,21 @@ const researchTypes = [
   }
 ];
 
+// Workflow step definitions
+type WorkflowStep = 'research' | 'artifacts' | 'selection' | 'email' | 'complete';
+
+interface WorkflowState {
+  currentStep: WorkflowStep;
+  completedSteps: Set<WorkflowStep>;
+  canNavigate: {
+    research: boolean;
+    artifacts: boolean;
+    selection: boolean;
+    email: boolean;
+    complete: boolean;
+  };
+}
+
 export function SpearThisTab({ company }: SpearThisTabProps) {
   const [selectedResearchType, setSelectedResearchType] = useState('comprehensive');
   const [currentSession, setCurrentSession] = useState<ResearchSession | null>(null);
@@ -92,6 +110,124 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
   const [researchLog, setResearchLog] = useState<{query: string; timestamp: Date; status: 'processing' | 'completed' | 'failed'; sources?: QuerySourceInfo}[]>([]);
   const [isResearchTypeExpanded, setIsResearchTypeExpanded] = useState(true);
   const [isReportExpanded, setIsReportExpanded] = useState(true);
+  const [isGeneratingArtifacts, setIsGeneratingArtifacts] = useState(false);
+  const [generatedArtifacts, setGeneratedArtifacts] = useState<any[]>([]);
+  const [selectedArtifact, setSelectedArtifact] = useState<any | null>(null);
+  const [artifactError, setArtifactError] = useState<string | null>(null);
+  // Project completion tracking
+  const [completedArtifacts, setCompletedArtifacts] = useState<Set<string>>(new Set());
+  const [showCompletionMode, setShowCompletionMode] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState<{
+    show: boolean;
+    artifactId: string;
+    artifactTitle: string;
+    action: 'complete' | 'incomplete';
+  } | null>(null);
+  // Email generation
+  const [generatedEmails, setGeneratedEmails] = useState<any[]>([]);
+  const [showEmailGeneration, setShowEmailGeneration] = useState(false);
+  
+  // Workflow management state
+  const [workflowState, setWorkflowState] = useState<WorkflowState>({
+    currentStep: 'research',
+    completedSteps: new Set(),
+    canNavigate: {
+      research: true,
+      artifacts: false,
+      selection: false,
+      email: false,
+      complete: false
+    }
+  });
+
+  // Workflow management functions
+  const updateWorkflowState = useCallback((updates: Partial<WorkflowState>) => {
+    setWorkflowState(prev => ({
+      ...prev,
+      ...updates,
+      completedSteps: updates.completedSteps || prev.completedSteps,
+      canNavigate: updates.canNavigate ? { ...prev.canNavigate, ...updates.canNavigate } : prev.canNavigate
+    }));
+  }, []);
+
+  const navigateToStep = useCallback((step: WorkflowStep) => {
+    if (workflowState.canNavigate[step]) {
+      updateWorkflowState({ currentStep: step });
+      
+      // Auto-expand/collapse sections based on step
+      switch (step) {
+        case 'research':
+          setIsResearchTypeExpanded(true);
+          setIsReportExpanded(false);
+          break;
+        case 'artifacts':
+          setIsResearchTypeExpanded(false);
+          setIsReportExpanded(true);
+          break;
+        case 'selection':
+          setShowCompletionMode(true);
+          setShowEmailGeneration(false);
+          break;
+        case 'email':
+          setShowEmailGeneration(true);
+          break;
+      }
+    }
+  }, [workflowState.canNavigate, updateWorkflowState]);
+
+  const markStepComplete = useCallback((step: WorkflowStep) => {
+    const newCompletedSteps = new Set(workflowState.completedSteps);
+    newCompletedSteps.add(step);
+    
+    // Update navigation permissions based on completed steps
+    const newCanNavigate = { ...workflowState.canNavigate };
+    
+    switch (step) {
+      case 'research':
+        newCanNavigate.artifacts = true;
+        break;
+      case 'artifacts':
+        newCanNavigate.selection = true;
+        break;
+      case 'selection':
+        newCanNavigate.email = true;
+        break;
+      case 'email':
+        newCanNavigate.complete = true;
+        break;
+    }
+    
+    updateWorkflowState({
+      completedSteps: newCompletedSteps,
+      canNavigate: newCanNavigate
+    });
+  }, [workflowState.completedSteps, workflowState.canNavigate, updateWorkflowState]);
+
+  const resetWorkflow = useCallback(() => {
+    setWorkflowState({
+      currentStep: 'research',
+      completedSteps: new Set(),
+      canNavigate: {
+        research: true,
+        artifacts: false,
+        selection: false,
+        email: false,
+        complete: false
+      }
+    });
+    
+    // Reset all related states
+    setCurrentSession(null);
+    setResearchFindings([]);
+    setGeneratedArtifacts([]);
+    setCompletedArtifacts(new Set());
+    setSelectedArtifact(null);
+    setGeneratedEmails([]);
+    setShowEmailGeneration(false);
+    setShowCompletionMode(false);
+    setIsResearchTypeExpanded(true);
+    setIsReportExpanded(false);
+  }, []);
 
   const loadResearchHistory = useCallback(async () => {
     try {
@@ -109,6 +245,42 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
   useEffect(() => {
     loadResearchHistory();
   }, [loadResearchHistory]);
+
+  // Save workflow state to localStorage
+  useEffect(() => {
+    const workflowData = {
+      workflowState,
+      completedArtifacts: Array.from(completedArtifacts),
+      selectedArtifact: selectedArtifact?.id || null,
+      generatedArtifacts: generatedArtifacts.map(a => a.id),
+      timestamp: Date.now()
+    };
+    localStorage.setItem(`spearfish-workflow-${company.id}`, JSON.stringify(workflowData));
+  }, [workflowState, completedArtifacts, selectedArtifact, generatedArtifacts, company.id]);
+
+  // Load workflow state from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(`spearfish-workflow-${company.id}`);
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        // Only restore if data is less than 24 hours old
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          if (parsed.workflowState) {
+            setWorkflowState({
+              ...parsed.workflowState,
+              completedSteps: new Set(parsed.workflowState.completedSteps)
+            });
+          }
+          if (parsed.completedArtifacts) {
+            setCompletedArtifacts(new Set(parsed.completedArtifacts));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to restore workflow state:', error);
+      }
+    }
+  }, [company.id]);
 
   const startResearch = async () => {
     setIsLoading(true);
@@ -231,6 +403,9 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
                 log.status === 'processing' ? {...log, status: 'completed'} : log
               ));
               loadResearchResults(sessionId);
+              // Mark research step as complete and enable artifacts step
+              markStepComplete('research');
+              navigateToStep('artifacts');
             }
             loadResearchHistory(); // Refresh history
           }
@@ -262,6 +437,172 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
     setCurrentSession(session);
   };
 
+  const generateArtifacts = async () => {
+    if (!currentSession || currentSession.status !== 'completed') {
+      setArtifactError('No completed research session available. Please complete research first.');
+      return;
+    }
+
+    setIsGeneratingArtifacts(true);
+    setArtifactError(null); // Clear previous errors
+    
+    try {
+      console.log('Starting artifact generation for session:', currentSession.id);
+      
+      const response = await fetch(`/api/companies/${company.id}/artifacts/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          research_session_id: currentSession.id,
+          config: {
+            maxProjects: 5,
+            focusAreas: ['technical', 'business'],
+            effortPreference: 'mixed',
+            timeframe: 'medium_term',
+            riskTolerance: 'medium'
+          }
+        }),
+      });
+      
+      console.log('API response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Generated artifacts:', data.artifacts?.length || 0);
+        
+        if (data.artifacts && data.artifacts.length > 0) {
+          setGeneratedArtifacts(data.artifacts);
+          setArtifactError(null);
+          // Mark artifacts step as complete and enable selection step
+          markStepComplete('artifacts');
+          navigateToStep('selection');
+        } else {
+          setArtifactError('No project ideas were generated. This might be due to insufficient research data or configuration issues.');
+        }
+      } else {
+        const errorData = await response.json().catch(() => null);
+        console.error('Artifact generation failed:', response.status, errorData);
+        
+        if (response.status === 401) {
+          setArtifactError('Authentication error. Please sign in again.');
+        } else if (response.status === 404) {
+          setArtifactError('Research session not found or incomplete.');
+        } else if (response.status === 500) {
+          setArtifactError('Server error during artifact generation. This might be due to missing OpenAI API configuration.');
+        } else {
+          setArtifactError(`Failed to generate artifacts: ${errorData?.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to generate artifacts:', error);
+      setArtifactError('Network error or unexpected failure. Please check your connection and try again.');
+    } finally {
+      setIsGeneratingArtifacts(false);
+    }
+  };
+
+  const handleMarkCompleted = (artifactId: string) => {
+    const artifact = generatedArtifacts.find(a => a.id === artifactId);
+    if (artifact) {
+      setConfirmationModal({
+        show: true,
+        artifactId,
+        artifactTitle: artifact.title,
+        action: 'complete'
+      });
+    }
+  };
+
+  const handleMarkIncomplete = (artifactId: string) => {
+    const artifact = generatedArtifacts.find(a => a.id === artifactId);
+    if (artifact) {
+      setConfirmationModal({
+        show: true,
+        artifactId,
+        artifactTitle: artifact.title,
+        action: 'incomplete'
+      });
+    }
+  };
+
+  const confirmAction = () => {
+    if (!confirmationModal) return;
+    
+    const wasEmpty = completedArtifacts.size === 0;
+    
+    if (confirmationModal.action === 'complete') {
+      setCompletedArtifacts(prev => new Set([...Array.from(prev), confirmationModal.artifactId]));
+    } else {
+      setCompletedArtifacts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(confirmationModal.artifactId);
+        return newSet;
+      });
+    }
+    
+    setConfirmationModal(null);
+    
+    // If this was the first completion, mark selection step as complete and enable email step
+    if (wasEmpty && confirmationModal.action === 'complete') {
+      markStepComplete('selection');
+      navigateToStep('email');
+    }
+  };
+
+  const cancelAction = () => {
+    setConfirmationModal(null);
+  };
+
+  const toggleCompletionMode = () => {
+    setShowCompletionMode(!showCompletionMode);
+  };
+
+  const handleEmailGenerated = (template: any) => {
+    setGeneratedEmails(prev => [template, ...prev]);
+    // Mark email step as complete
+    markStepComplete('email');
+  };
+
+  const toggleEmailGeneration = () => {
+    setShowEmailGeneration(!showEmailGeneration);
+  };
+
+  // Workflow step definitions for display
+  const workflowSteps = [
+    {
+      id: 'research' as WorkflowStep,
+      title: 'Deep Research',
+      description: 'Analyze company intelligence',
+      icon: '🔍'
+    },
+    {
+      id: 'artifacts' as WorkflowStep,
+      title: 'Generate Ideas',
+      description: 'Create project artifacts',
+      icon: '💡'
+    },
+    {
+      id: 'selection' as WorkflowStep,
+      title: 'Select Projects',
+      description: 'Mark completed work',
+      icon: '✅'
+    },
+    {
+      id: 'email' as WorkflowStep,
+      title: 'Create Outreach',
+      description: 'Generate email templates',
+      icon: '📧'
+    },
+    {
+      id: 'complete' as WorkflowStep,
+      title: 'Complete',
+      description: 'Ready for outreach',
+      icon: '🚀'
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -275,8 +616,171 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
         </div>
       </div>
 
-      {/* Research Type Selection */}
+      {/* Workflow Progress Indicator */}
       <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+            <span className="text-purple-400">📋</span>
+            Workflow Progress
+          </h3>
+          <button
+            onClick={resetWorkflow}
+            className="text-slate-400 hover:text-slate-300 text-sm transition-colors flex items-center gap-1"
+          >
+            <span>↺</span>
+            Start Over
+          </button>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          {workflowSteps.map((step, index) => {
+            const isCompleted = workflowState.completedSteps.has(step.id);
+            const isCurrent = workflowState.currentStep === step.id;
+            const canNavigate = workflowState.canNavigate[step.id];
+            
+            return (
+              <div key={step.id} className="flex items-center flex-1">
+                {/* Step Button */}
+                <button
+                  onClick={() => navigateToStep(step.id)}
+                  disabled={!canNavigate}
+                  className={`relative flex flex-col items-center p-3 rounded-lg transition-all min-w-0 flex-1 ${
+                    isCurrent
+                      ? 'bg-purple-600/20 border border-purple-500/50 text-purple-300 scale-105'
+                      : isCompleted
+                      ? 'bg-green-600/20 border border-green-500/50 text-green-300 hover:bg-green-600/30'
+                      : canNavigate
+                      ? 'bg-slate-700/30 border border-slate-600 text-slate-400 hover:bg-slate-700/50 hover:text-slate-300'
+                      : 'bg-slate-800/30 border border-slate-700 text-slate-600 cursor-not-allowed'
+                  }`}
+                >
+                  {/* Step Icon */}
+                  <div className={`text-2xl mb-2 ${
+                    isCurrent ? 'animate-pulse' : ''
+                  }`}>
+                    {isCompleted ? '✓' : step.icon}
+                  </div>
+                  
+                  {/* Step Info */}
+                  <div className="text-center">
+                    <div className={`text-sm font-medium ${
+                      isCurrent ? 'text-purple-200' : isCompleted ? 'text-green-200' : 'inherit'
+                    }`}>
+                      {step.title}
+                    </div>
+                    <div className={`text-xs mt-1 ${
+                      isCurrent ? 'text-purple-400' : isCompleted ? 'text-green-400' : 'text-slate-500'
+                    }`}>
+                      {step.description}
+                    </div>
+                  </div>
+                  
+                  {/* Current Step Indicator */}
+                  {isCurrent && (
+                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
+                </button>
+                
+                {/* Connector Line */}
+                {index < workflowSteps.length - 1 && (
+                  <div className={`h-0.5 flex-1 mx-2 transition-colors ${
+                    workflowState.completedSteps.has(step.id)
+                      ? 'bg-green-500/50'
+                      : 'bg-slate-600/50'
+                  }`}></div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Progress Summary */}
+        <div className="mt-6 pt-4 border-t border-slate-600">
+          <div className="flex items-center justify-between text-sm">
+            <div className="text-slate-400">
+              Step {Math.max(1, workflowState.completedSteps.size + 1)} of {workflowSteps.length}
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-green-400">
+                ✓ {workflowState.completedSteps.size} completed
+              </span>
+              <div className="flex items-center gap-1">
+                <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-green-500 transition-all duration-500"
+                    style={{ 
+                      width: `${(workflowState.completedSteps.size / workflowSteps.length) * 100}%` 
+                    }}
+                  ></div>
+                </div>
+                <span className="text-xs text-slate-400 ml-1">
+                  {Math.round((workflowState.completedSteps.size / workflowSteps.length) * 100)}%
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Navigation Controls */}
+          <div className="flex items-center justify-between mt-4">
+            <button
+              onClick={() => {
+                const currentIndex = workflowSteps.findIndex(s => s.id === workflowState.currentStep);
+                if (currentIndex > 0) {
+                  const previousStep = workflowSteps[currentIndex - 1];
+                  if (workflowState.canNavigate[previousStep.id]) {
+                    navigateToStep(previousStep.id);
+                  }
+                }
+              }}
+              disabled={
+                workflowSteps.findIndex(s => s.id === workflowState.currentStep) === 0 ||
+                !workflowSteps[workflowSteps.findIndex(s => s.id === workflowState.currentStep) - 1] ||
+                !workflowState.canNavigate[workflowSteps[workflowSteps.findIndex(s => s.id === workflowState.currentStep) - 1]?.id]
+              }
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-slate-700/50 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 rounded-lg transition-colors"
+            >
+              <span>←</span>
+              Previous Step
+            </button>
+            
+            <div className="text-center">
+              <div className="text-xs text-slate-400 uppercase tracking-wider font-medium">
+                Current Step
+              </div>
+              <div className="text-sm text-white font-medium">
+                {workflowSteps.find(s => s.id === workflowState.currentStep)?.title}
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                const currentIndex = workflowSteps.findIndex(s => s.id === workflowState.currentStep);
+                if (currentIndex < workflowSteps.length - 1) {
+                  const nextStep = workflowSteps[currentIndex + 1];
+                  if (workflowState.canNavigate[nextStep.id]) {
+                    navigateToStep(nextStep.id);
+                  }
+                }
+              }}
+              disabled={
+                workflowSteps.findIndex(s => s.id === workflowState.currentStep) === workflowSteps.length - 1 ||
+                !workflowSteps[workflowSteps.findIndex(s => s.id === workflowState.currentStep) + 1] ||
+                !workflowState.canNavigate[workflowSteps[workflowSteps.findIndex(s => s.id === workflowState.currentStep) + 1]?.id]
+              }
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-slate-700/50 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 rounded-lg transition-colors"
+            >
+              Next Step
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Research Type Selection - Show when in research step or research completed */}
+      {(workflowState.currentStep === 'research' || workflowState.completedSteps.has('research')) && (
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <h3 className="text-xl font-semibold text-white">Select Research Type</h3>
           <button
@@ -334,7 +838,8 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Research Progress */}
       {currentSession && (currentSession.status === 'processing' || currentSession.status === 'in_progress') && (
@@ -471,8 +976,8 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
         </div>
       )}
 
-      {/* Research Results */}
-      {researchFindings.length > 0 && (
+      {/* Research Results - Show when artifacts step is available or current */}
+      {researchFindings.length > 0 && (workflowState.canNavigate.artifacts || workflowState.currentStep === 'artifacts') && (
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
@@ -697,6 +1202,258 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
                 </span>
               </div>
             </div>
+
+            {/* Generate Artifacts Button */}
+            {currentSession?.status === 'completed' && researchFindings.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-600">
+                <div className="bg-gradient-to-r from-emerald-600/10 to-blue-600/10 rounded-lg p-6 border border-emerald-500/20">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">🚀</span>
+                    <div>
+                      <h4 className="text-white font-semibold">Ready to Create Project Artifacts?</h4>
+                      <p className="text-slate-400 text-sm">
+                        Transform research insights into actionable project ideas and solution proposals
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={generateArtifacts}
+                    disabled={isGeneratingArtifacts}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all flex items-center gap-2"
+                  >
+                    {isGeneratingArtifacts ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Generating Artifacts...
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        Generate Project Artifacts
+                      </>
+                    )}
+                  </button>
+                  
+                  {generatedArtifacts.length > 0 && (
+                    <div className="mt-4 text-sm text-emerald-400">
+                      ✓ Generated {generatedArtifacts.length} project artifacts
+                    </div>
+                  )}
+                  
+                  {artifactError && (
+                    <div className="mt-4 p-3 bg-red-600/10 border border-red-500/20 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-400 text-sm">⚠️</span>
+                        <div className="text-sm">
+                          <p className="text-red-300 font-medium">Artifact Generation Failed</p>
+                          <p className="text-red-400 mt-1">{artifactError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Project Ideas Display - Show when selection step is available or current */}
+      {generatedArtifacts.length > 0 && (workflowState.canNavigate.selection || workflowState.currentStep === 'selection') && (
+        <div className="space-y-6">
+          {/* Project Ideas Display */}
+          <ProjectIdeasDisplay
+            artifacts={generatedArtifacts}
+            selectedArtifact={selectedArtifact}
+            onSelectArtifact={setSelectedArtifact}
+            isLoading={isGeneratingArtifacts}
+            completedArtifacts={completedArtifacts}
+            onMarkCompleted={handleMarkCompleted}
+            onMarkIncomplete={handleMarkIncomplete}
+            showCompletionControls={showCompletionMode}
+          />
+
+          {/* Project Selection Controls */}
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">📋</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Project Selection</h3>
+                  <p className="text-slate-400 text-sm">
+                    Mark projects you&apos;ve completed to track your progress
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={toggleCompletionMode}
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                  showCompletionMode
+                    ? 'bg-green-600/20 text-green-300 border border-green-500/30'
+                    : 'bg-slate-700/50 text-slate-300 border border-slate-600 hover:border-slate-500'
+                }`}
+              >
+                {showCompletionMode ? 'Exit Selection Mode' : 'Enable Selection Mode'}
+              </button>
+            </div>
+            
+            {showCompletionMode && (
+              <div className="space-y-3">
+                {completedArtifacts.size > 0 && (
+                  <div className="p-3 bg-green-950/20 border border-green-500/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-green-400 font-medium">
+                        ✓ {completedArtifacts.size} of {generatedArtifacts.length} projects completed
+                      </span>
+                      {completedArtifacts.size === generatedArtifacts.length && (
+                        <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">
+                          All Done! 🎉
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Validation Message */}
+                {showCompletionMode && completedArtifacts.size === 0 && (
+                  <div className="p-3 bg-amber-950/20 border border-amber-500/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-amber-400">⚠️</span>
+                      <span className="text-amber-300">
+                        Please mark at least one project as completed to proceed with your outreach.
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Next Steps Guidance */}
+                {completedArtifacts.size > 0 && (
+                  <div className="p-3 bg-blue-950/20 border border-blue-500/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-blue-400">💡</span>
+                      <span className="text-blue-300">
+                        Great! You&apos;ve completed {completedArtifacts.size} project{completedArtifacts.size > 1 ? 's' : ''}. 
+                        These can be used to demonstrate your value when reaching out to this company.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Email Generation Toggle */}
+          {completedArtifacts.size > 0 && (
+            <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-lg">📧</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Email Template Generation</h3>
+                  <p className="text-slate-400 text-sm">
+                    Generate personalized outreach emails based on your completed projects
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={toggleEmailGeneration}
+                className={`w-full px-6 py-3 rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2 ${
+                  showEmailGeneration
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                }`}
+              >
+                {showEmailGeneration ? (
+                  <>
+                    <span>📧</span>
+                    Hide Email Generation
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    Generate Email Templates
+                    <span className="text-xs bg-white/20 px-2 py-1 rounded">
+                      Next Step
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Email Generation Interface - Show when email step is available or current */}
+      {(workflowState.canNavigate.email || workflowState.currentStep === 'email') && showEmailGeneration && selectedArtifact && completedArtifacts.has(selectedArtifact.id) && (
+        <EmailGenerationInterface
+          selectedProject={selectedArtifact}
+          companyData={{
+            id: company.id,
+            name: company.name,
+            industry: company.industry,
+            website: company.website,
+            description: company.long_description || company.one_liner
+          }}
+          onEmailGenerated={handleEmailGenerated}
+        />
+      )}
+
+      {/* Show message when email generation is enabled but no completed project is selected */}
+      {(workflowState.canNavigate.email || workflowState.currentStep === 'email') && showEmailGeneration && (!selectedArtifact || !completedArtifacts.has(selectedArtifact.id)) && (
+        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
+          <div className="text-4xl mb-4">📧</div>
+          <h3 className="text-xl font-semibold text-white mb-2">Select a Completed Project</h3>
+          <p className="text-slate-400">
+            Click on one of your completed projects above to generate a personalized email template for outreach.
+          </p>
+        </div>
+      )}
+
+      {/* Workflow Completion Celebration */}
+      {workflowState.completedSteps.has('email') && generatedEmails.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-600/10 to-purple-600/10 border border-emerald-500/20 rounded-xl p-8 text-center">
+          <div className="text-6xl mb-4">🎉</div>
+          <h3 className="text-2xl font-bold text-white mb-3">Workflow Complete!</h3>
+          <p className="text-slate-300 mb-6 max-w-2xl mx-auto leading-relaxed">
+            Congratulations! You&apos;ve successfully completed the entire Spear This workflow. You now have deep research insights, 
+            actionable project artifacts, and personalized email templates ready for high-impact outreach to {company.name}.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <div className="text-3xl mb-2">🔍</div>
+              <div className="text-white font-semibold">Research Complete</div>
+              <div className="text-slate-400 text-sm">{researchFindings.length} findings discovered</div>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <div className="text-3xl mb-2">💡</div>
+              <div className="text-white font-semibold">Projects Generated</div>
+              <div className="text-slate-400 text-sm">{completedArtifacts.size} of {generatedArtifacts.length} completed</div>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-4">
+              <div className="text-3xl mb-2">📧</div>
+              <div className="text-white font-semibold">Emails Created</div>
+              <div className="text-slate-400 text-sm">{generatedEmails.length} template{generatedEmails.length !== 1 ? 's' : ''} ready</div>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigateToStep('email')}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>📧</span>
+              Review Email Templates
+            </button>
+            <button
+              onClick={resetWorkflow}
+              className="px-6 py-3 bg-slate-700/50 hover:bg-slate-700 text-slate-300 font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+            >
+              <span>↺</span>
+              Start New Workflow
+            </button>
           </div>
         </div>
       )}
@@ -749,6 +1506,63 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
           </p>
           <div className="text-sm text-slate-500">
             Select a research type above and click &quot;Start Deep Research&quot; to begin.
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmationModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-lg ${
+                confirmationModal.action === 'complete' 
+                  ? 'bg-green-600/20 border border-green-500/30' 
+                  : 'bg-slate-600/20 border border-slate-500/30'
+              }`}>
+                {confirmationModal.action === 'complete' ? (
+                  <CheckCircleIcon className="h-5 w-5 text-green-400" />
+                ) : (
+                  <span className="text-slate-400 text-lg">↺</span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {confirmationModal.action === 'complete' ? 'Mark Project as Completed?' : 'Mark Project as Incomplete?'}
+                </h3>
+                <p className="text-slate-400 text-sm">
+                  {confirmationModal.action === 'complete' 
+                    ? 'This will mark the project as done and track your progress.'
+                    : 'This will remove the completion status from this project.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-700/30 rounded-lg p-3 mb-6">
+              <p className="text-white font-medium text-sm">
+                {confirmationModal.artifactTitle}
+              </p>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={cancelAction}
+                className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAction}
+                className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                  confirmationModal.action === 'complete'
+                    ? 'bg-green-600/20 hover:bg-green-600/30 text-green-300 border border-green-500/30'
+                    : 'bg-slate-600/50 hover:bg-slate-600 text-slate-300'
+                }`}
+              >
+                {confirmationModal.action === 'complete' ? 'Mark Complete' : 'Mark Incomplete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

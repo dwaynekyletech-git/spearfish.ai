@@ -7,6 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Force this route to be dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -18,39 +21,29 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get table structure
-    const { data: columns, error: columnsError } = await supabase
-      .from('information_schema.columns')
-      .select('column_name, data_type, is_nullable, column_default')
-      .eq('table_name', 'companies')
-      .eq('table_schema', 'public');
+    // Get table structure by querying a sample row instead
+    const { data: sample, error: sampleError } = await supabase
+      .from('companies')
+      .select('*')
+      .limit(1);
     
-    if (columnsError) {
-      throw new Error(`Failed to get columns: ${columnsError.message}`);
+    if (sampleError) {
+      throw new Error(`Failed to query companies table: ${sampleError.message}`);
     }
 
-    // Get enum types if they exist
-    const { data: enums, error: enumsError } = await supabase
-      .from('information_schema.routines')
-      .select('*')
-      .eq('routine_schema', 'public')
-      .like('routine_name', '%company%');
-    
-    // Try to get enum values for status column
-    const { data: enumValues, error: enumValuesError } = await supabase
-      .rpc('get_enum_values', { enum_name: 'company_status' })
-      .single();
-    
-    const statusColumn = columns?.find(c => c.column_name === 'status');
+    // Get count of companies
+    const { count, error: countError } = await supabase
+      .from('companies')
+      .select('*', { count: 'exact', head: true });
     
     return NextResponse.json({
       success: true,
       data: {
-        columns: columns || [],
-        status_column: statusColumn,
-        enum_values: enumValues || null,
-        enum_values_error: enumValuesError?.message || null,
-        column_count: columns?.length || 0
+        table_exists: true,
+        sample_row: sample?.[0] || null,
+        total_companies: count || 0,
+        columns: sample?.[0] ? Object.keys(sample[0]) : [],
+        column_count: sample?.[0] ? Object.keys(sample[0]).length : 0
       }
     });
     

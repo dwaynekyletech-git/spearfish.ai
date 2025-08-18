@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * GitHub API Service
  * 
@@ -70,7 +69,7 @@ export class GitHubService {
           // Retry once
           return options.request.retryCount < 1;
         },
-        onSecondaryRateLimit: (retryAfter: number, options: any) => {
+        onSecondaryRateLimit: (retryAfter: number, _options: any) => {
           console.warn(
             `GitHub API secondary rate limit hit. Retrying after ${retryAfter} seconds.`
           );
@@ -264,20 +263,20 @@ export class GitHubService {
         id: repo.id,
         name: repo.name,
         full_name: repo.full_name,
-        owner: repo.owner.login,
+        owner: repo.owner?.login || '',
         description: repo.description,
         html_url: repo.html_url,
-        stars_count: repo.stargazers_count,
-        forks_count: repo.forks_count,
-        language: repo.language,
-        created_at: repo.created_at,
-        updated_at: repo.updated_at,
-        pushed_at: repo.pushed_at || repo.updated_at,
-        size: repo.size,
-        open_issues_count: repo.open_issues_count,
-        archived: repo.archived,
-        disabled: repo.disabled,
-        private: repo.private,
+        stars_count: repo.stargazers_count ?? 0,
+        forks_count: repo.forks_count ?? 0,
+        language: repo.language ?? null,
+        created_at: repo.created_at ?? new Date().toISOString(),
+        updated_at: repo.updated_at ?? new Date().toISOString(),
+        pushed_at: repo.pushed_at || repo.updated_at || new Date().toISOString(),
+        size: repo.size ?? 0,
+        open_issues_count: repo.open_issues_count ?? 0,
+        archived: repo.archived ?? false,
+        disabled: repo.disabled ?? false,
+        private: repo.private ?? false,
       }));
     } catch (error) {
       throw this.handleError(error);
@@ -344,12 +343,12 @@ export class GitHubService {
           id: repo.id,
           name: repo.name,
           full_name: repo.full_name,
-          owner: repo.owner.login,
+          owner: repo.owner?.login || '',
           description: repo.description,
           html_url: repo.html_url,
-          stars_count: repo.stargazers_count,
-          forks_count: repo.forks_count,
-          language: repo.language,
+          stars_count: repo.stargazers_count ?? 0,
+          forks_count: repo.forks_count ?? 0,
+          language: repo.language ?? null,
           created_at: repo.created_at,
           updated_at: repo.updated_at,
           pushed_at: repo.pushed_at || repo.updated_at,

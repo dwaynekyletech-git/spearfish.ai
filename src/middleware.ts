@@ -8,6 +8,7 @@ const isProtectedRoute = createRouteMatcher([
   '/settings(.*)',
   '/admin(.*)',
   '/api/companies(.*)',
+  '/api/company-data(.*)',
   '/api/user(.*)',
   '/api/admin(.*)',
 ]);
@@ -20,7 +21,14 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Protect routes that require authentication, but not public routes
+  // Handle API routes differently from page routes
+  if (req.nextUrl.pathname.startsWith('/api/')) {
+    // For API routes, we'll let the individual route handlers handle authentication
+    // This avoids the middleware interfering with API responses
+    return;
+  }
+  
+  // Protect page routes that require authentication, but not public routes
   if (isProtectedRoute(req) && !isPublicRoute(req)) {
     await auth.protect();
   }

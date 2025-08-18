@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 
@@ -263,10 +262,15 @@ export class CompanyResearchService {
       apiKey: openaiKey
     });
     
-    // Initialize Supabase client
+    // Initialize Supabase client with service role (bypasses RLS)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+    this.supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
   }
 
   async startResearchSession(
@@ -460,7 +464,7 @@ export class CompanyResearchService {
             processed.systemPrompt,
             {
               search_domain_filter: processed.searchDomains,
-              search_recency_filter: processed.recencyFilter,
+              search_recency_filter: processed.recencyFilter as "month" | "week" | "day" | "hour" | undefined,
               return_citations: true,
               return_related_questions: true
             }
@@ -673,12 +677,78 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       const analysisResult = JSON.parse(aiResponse);
       const aiFindings = analysisResult.findings || [];
 
+      // Valid finding types that match database constraint
+      const validFindingTypes = [
+        'problem_identified', 
+        'market_opportunity', 
+        'competitive_insight', 
+        'tech_trend', 
+        'business_model', 
+        'funding_status', 
+        'team_insight', 
+        'product_analysis'
+      ];
+
+      // Function to validate and normalize finding type
+      const normalizeFindingType = (type: string): string => {
+        if (!type) return 'problem_identified';
+        
+        // Convert to lowercase and replace spaces/dashes with underscores
+        const normalized = type.toLowerCase().replace(/[-\s]+/g, '_');
+        
+        // If exact match, return it
+        if (validFindingTypes.includes(normalized)) {
+          return normalized;
+        }
+        
+        // Try to map common variations
+        const mappings: Record<string, string> = {
+          'technical_problem': 'problem_identified',
+          'technical_challenge': 'problem_identified',
+          'bug': 'problem_identified',
+          'issue': 'problem_identified',
+          'business_opportunity': 'market_opportunity',
+          'growth_opportunity': 'market_opportunity',
+          'revenue_opportunity': 'market_opportunity',
+          'competitor': 'competitive_insight',
+          'competition': 'competitive_insight',
+          'technology': 'tech_trend',
+          'technical_trend': 'tech_trend',
+          'team': 'team_insight',
+          'hiring': 'team_insight',
+          'people': 'team_insight',
+          'business': 'business_model',
+          'strategy': 'business_model',
+          'revenue': 'business_model',
+          'funding': 'funding_status',
+          'investment': 'funding_status',
+          'product': 'product_analysis',
+          'feature': 'product_analysis'
+        };
+        
+        // Check mappings
+        if (mappings[normalized]) {
+          return mappings[normalized];
+        }
+        
+        // Try partial matches
+        for (const validType of validFindingTypes) {
+          if (normalized.includes(validType.split('_')[0]) || validType.includes(normalized.split('_')[0])) {
+            return validType;
+          }
+        }
+        
+        // Default fallback
+        console.warn(`Unknown finding type '${type}', defaulting to 'problem_identified'`);
+        return 'problem_identified';
+      };
+
       // Convert AI findings to our ResearchFinding format
       const findings: ResearchFinding[] = aiFindings.map((aiFinding: any) => ({
         id: randomUUID(),
         session_id: sessionId,
         company_id: companyId,
-        finding_type: aiFinding.finding_type || 'problem_identified',
+        finding_type: normalizeFindingType(aiFinding.finding_type),
         title: aiFinding.title || 'Research Finding',
         content: aiFinding.content || '',
         confidence_score: Math.max(0, Math.min(1, aiFinding.confidence_score || 0.5)),
@@ -690,7 +760,8 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
           templateCategory: template.category,
           aiReasoning: aiFinding.reasoning,
           relatedQuestions: result.related_questions || [],
-          tokenUsage: result.usage
+          tokenUsage: result.usage,
+          originalFindingType: aiFinding.finding_type // Store original for debugging
         },
         is_verified: false,
         verified_by: undefined,
@@ -778,8 +849,8 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     return majorSections;
   }
 
-  private mapTemplateToFindingType(category: string): ResearchFinding['findingType'] {
-    const mapping: Record<string, ResearchFinding['findingType']> = {
+  private mapTemplateToFindingType(category: string): ResearchFinding['finding_type'] {
+    const mapping: Record<string, ResearchFinding['finding_type']> = {
       'technical': 'problem_identified',
       'business': 'market_opportunity',
       'team': 'team_insight',
@@ -827,7 +898,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     // Increase score based on specific indicators
     if (content.includes('specific') || content.includes('concrete')) score += 0.1;
     if (content.includes('recent') || content.includes('latest')) score += 0.1;
-    if (content.match(/\d+/g)?.length > 2) score += 0.1; // Contains numbers/data
+    if ((content.match(/\d+/g)?.length ?? 0) > 2) score += 0.1; // Contains numbers/data
     
     return Math.min(Math.max(score, 0), 1);
   }
@@ -835,7 +906,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
   private determinePriorityLevel(
     templatePriority: string,
     content: string
-  ): ResearchFinding['priorityLevel'] {
+  ): ResearchFinding['priority_level'] {
     
     // Check for high-priority keywords
     const highPriorityKeywords = ['urgent', 'critical', 'major', 'significant', 'severe'];
@@ -875,7 +946,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     });
     
     // Remove duplicates and limit to 10 tags
-    return [...new Set(tags)].slice(0, 10);
+    return Array.from(new Set(tags)).slice(0, 10);
   }
 
   private async generateResearchSynthesis(
@@ -886,11 +957,11 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     
     // Group findings by category
     const keyFindings = {
-      technical: findings.filter(f => f.findingType === 'problem_identified'),
-      business: findings.filter(f => f.findingType === 'market_opportunity'),
-      team: findings.filter(f => f.findingType === 'team_insight'),
-      competitive: findings.filter(f => f.findingType === 'competitive_insight'),
-      market: findings.filter(f => f.findingType === 'market_opportunity')
+      technical: findings.filter(f => f.finding_type === 'problem_identified'),
+      business: findings.filter(f => f.finding_type === 'market_opportunity'),
+      team: findings.filter(f => f.finding_type === 'team_insight'),
+      competitive: findings.filter(f => f.finding_type === 'competitive_insight'),
+      market: findings.filter(f => f.finding_type === 'market_opportunity')
     };
 
     // Generate executive summary
@@ -900,7 +971,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     const actionableOpportunities = await this.generateActionableOpportunities(findings);
 
     // Calculate confidence level
-    const confidenceLevel = findings.reduce((sum, f) => sum + f.confidenceScore, 0) / findings.length;
+    const confidenceLevel = findings.reduce((sum, f) => sum + f.confidence_score, 0) / findings.length;
 
     const synthesis: ResearchSynthesis = {
       sessionId,
@@ -920,7 +991,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
   private async generateExecutiveSummary(companyName: string, findings: ResearchFinding[]): Promise<string> {
     // Generate a concise executive summary based on findings
     const topFindings = findings
-      .filter(f => f.priorityLevel === 'high' || f.priorityLevel === 'critical')
+      .filter(f => f.priority_level === 'high' || f.priority_level === 'critical')
       .slice(0, 5);
 
     if (topFindings.length === 0) {
@@ -936,13 +1007,13 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     const opportunities: ResearchSynthesis['actionableOpportunities'] = [];
 
     // Group high-priority findings and create opportunities
-    const highPriorityFindings = findings.filter(f => f.priorityLevel === 'high' || f.priorityLevel === 'critical');
+    const highPriorityFindings = findings.filter(f => f.priority_level === 'high' || f.priority_level === 'critical');
 
     for (const finding of highPriorityFindings.slice(0, 3)) {
       const opportunity = {
         title: `Address ${finding.title}`,
         description: finding.content.substring(0, 200) + '...',
-        estimatedImpact: finding.priorityLevel === 'critical' ? 'high' as const : 'medium' as const,
+        estimatedImpact: finding.priority_level === 'critical' ? 'high' as const : 'medium' as const,
         requiredSkills: this.inferRequiredSkills(finding),
         potentialArtifacts: this.suggestArtifacts(finding)
       };
@@ -1015,15 +1086,15 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       }
     });
 
-    return [...new Set(risks)].slice(0, 5);
+    return Array.from(new Set(risks)).slice(0, 5);
   }
 
   private generateRecommendedNextSteps(findings: ResearchFinding[]): string[] {
     const steps: string[] = [];
     
     // Generate steps based on finding patterns
-    const technicalFindings = findings.filter(f => f.findingType === 'problem_identified');
-    const businessFindings = findings.filter(f => f.findingType === 'market_opportunity');
+    const technicalFindings = findings.filter(f => f.finding_type === 'problem_identified');
+    const businessFindings = findings.filter(f => f.finding_type === 'market_opportunity');
     
     if (technicalFindings.length > 0) {
       steps.push('Prioritize technical challenges by impact and feasibility');
@@ -1065,14 +1136,44 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
   }
 
   private async saveFindings(findings: ResearchFinding[]): Promise<void> {
-    const { error } = await this.supabase
+    if (!findings.length) {
+      console.log('No findings to save');
+      return;
+    }
+
+    // Convert Date objects to ISO strings for Supabase
+    const findingsForDb = findings.map(finding => ({
+      ...finding,
+      created_at: finding.created_at.toISOString(),
+      updated_at: finding.updated_at.toISOString(),
+      verified_at: finding.verified_at?.toISOString() || null
+    }));
+
+    console.log(`💾 Saving ${findingsForDb.length} research findings to database`);
+    
+    const { data, error } = await this.supabase
       .from('research_findings')
-      .insert(findings);
+      .insert(findingsForDb)
+      .select();
 
     if (error) {
-      console.error('Failed to save research findings:', error);
-      throw new Error('Failed to save research findings');
+      console.error('Failed to save research findings:', {
+        error: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        findingsCount: findingsForDb.length,
+        sampleFinding: findingsForDb[0] ? {
+          id: findingsForDb[0].id,
+          session_id: findingsForDb[0].session_id,
+          company_id: findingsForDb[0].company_id,
+          finding_type: findingsForDb[0].finding_type
+        } : null
+      });
+      throw new Error(`Failed to save research findings: ${error.message}`);
     }
+
+    console.log(`✅ Successfully saved ${data?.length || 0} research findings`);
   }
 
   // Public API methods
@@ -1102,13 +1203,47 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
     const progress = this.progressTracker.getProgress(sessionId);
     if (!progress) return null;
 
-    // In a real implementation, you'd fetch from database
-    // For now, return from memory
-    return {
-      session: {} as ResearchSession, // Would fetch from DB
-      findings: progress.findings,
-      synthesis: progress.sessionMetadata?.synthesis
-    };
+    // Fetch actual session data from database
+    try {
+      const { data: sessionData, error: sessionError } = await this.supabase
+        .from('company_research_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError || !sessionData) {
+        console.error('Failed to fetch session data:', sessionError);
+        return null;
+      }
+
+      // Convert database result to ResearchSession type
+      const session: ResearchSession = {
+        id: sessionData.id,
+        company_id: sessionData.company_id,
+        created_by: sessionData.created_by,
+        session_type: sessionData.session_type,
+        status: sessionData.status,
+        research_query: sessionData.research_query,
+        api_provider: sessionData.api_provider,
+        cost_usd: sessionData.cost_usd,
+        tokens_used: sessionData.tokens_used,
+        session_metadata: sessionData.session_metadata,
+        error_message: sessionData.error_message,
+        started_at: new Date(sessionData.started_at),
+        completed_at: sessionData.completed_at ? new Date(sessionData.completed_at) : undefined,
+        created_at: new Date(sessionData.created_at),
+        updated_at: new Date(sessionData.updated_at)
+      };
+
+      return {
+        session,
+        findings: progress.findings,
+        synthesis: undefined // synthesis stored separately
+      };
+    } catch (error) {
+      console.error('Error fetching session results:', error);
+      return null;
+    }
   }
 
   async cleanup(sessionId: string): Promise<void> {

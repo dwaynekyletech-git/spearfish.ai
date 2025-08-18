@@ -9,6 +9,9 @@ import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { createSpearfishDatabaseService } from '@/lib/spearfish-database-service';
 
+// Force this route to be dynamic
+export const dynamic = 'force-dynamic';
+
 // Query parameters schema
 const QueryParamsSchema = z.object({
   limit: z.coerce.number().min(1).max(100).optional().default(20),

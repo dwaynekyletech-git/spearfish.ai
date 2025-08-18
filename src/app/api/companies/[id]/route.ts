@@ -6,8 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { createSpearfishDatabaseService } from '@/lib/spearfish-database-service';
-import { spearfishScoringService, CompanyData } from '@/lib/spearfish-scoring-service';
+import { createSpearfishDatabaseService } from '../../../../lib/spearfish-database-service';
+import { spearfishScoringService, CompanyData } from '../../../../lib/spearfish-scoring-service';
 
 // Mock data for fallback when database is not available
 function getMockCompanies(): CompanyData[] {

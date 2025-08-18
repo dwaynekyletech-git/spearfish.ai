@@ -1,0 +1,259 @@
+-- Migration to create tables for the agent architecture
+-- Project Artifacts and Email Templates for the agent system
+
+-- Step 1: Create project_artifacts table for Project Idea Generator Tool
+CREATE TABLE IF NOT EXISTS project_artifacts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    research_session_id UUID NOT NULL REFERENCES company_research_sessions(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+    
+    -- Artifact type and classification
+    type TEXT NOT NULL CHECK (type IN (
+        'technical_proposal',
+        'integration_guide', 
+        'optimization_plan',
+        'security_audit',
+        'market_analysis',
+        'automation_script',
+        'dashboard_design',
+        'api_documentation'
+    )),
+    
+    -- Core content
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    problem_statement TEXT NOT NULL,
+    proposed_solution TEXT NOT NULL,
+    implementation_approach TEXT NOT NULL,
+    
+    -- Effort and impact estimates
+    estimated_effort TEXT NOT NULL CHECK (estimated_effort IN ('low', 'medium', 'high')),
+    estimated_impact TEXT NOT NULL CHECK (estimated_impact IN ('low', 'medium', 'high')),
+    
+    -- Project details
+    required_skills JSONB DEFAULT '[]'::jsonb,
+    deliverables JSONB DEFAULT '[]'::jsonb,
+    timeline_estimate TEXT,
+    success_metrics JSONB DEFAULT '[]'::jsonb,
+    risk_factors JSONB DEFAULT '[]'::jsonb,
+    
+    -- Links to research
+    source_findings JSONB DEFAULT '[]'::jsonb, -- Array of research finding IDs
+    
+    -- Scoring and confidence
+    priority_score INTEGER NOT NULL DEFAULT 50 CHECK (priority_score >= 0 AND priority_score <= 100),
+    confidence_score DECIMAL(3,2) NOT NULL DEFAULT 0.5 CHECK (confidence_score >= 0 AND confidence_score <= 1),
+    
+    -- Metadata and timestamps
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Step 2: Create email_templates table for Email Template Creator Tool
+CREATE TABLE IF NOT EXISTS email_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    project_artifact_id UUID NOT NULL REFERENCES project_artifacts(id) ON DELETE CASCADE,
+    company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    created_by UUID NOT NULL REFERENCES user_profiles(id) ON DELETE RESTRICT,
+    
+    -- Template type and content
+    template_type TEXT NOT NULL CHECK (template_type IN (
+        'cold_outreach',
+        'follow_up',
+        'proposal_delivery',
+        'value_demonstration'
+    )),
+    
+    -- Email content
+    subject_line TEXT NOT NULL,
+    email_body TEXT NOT NULL,
+    call_to_action TEXT NOT NULL,
+    
+    -- Email configuration
+    tone TEXT NOT NULL CHECK (tone IN ('professional', 'casual', 'technical', 'executive')),
+    
+    -- Personalization and research integration
+    personalization_elements JSONB DEFAULT '[]'::jsonb,
+    research_citations JSONB DEFAULT '[]'::jsonb,
+    
+    -- Performance estimates
+    estimated_response_rate DECIMAL(4,3) DEFAULT 0.05 CHECK (estimated_response_rate >= 0 AND estimated_response_rate <= 1),
+    
+    -- A/B testing variants
+    a_b_variants JSONB DEFAULT NULL,
+    
+    -- Metadata and timestamps
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Step 3: Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_company_id ON project_artifacts(company_id);
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_research_session_id ON project_artifacts(research_session_id);
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_created_by ON project_artifacts(created_by);
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_type ON project_artifacts(type);
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_priority_score ON project_artifacts(priority_score DESC);
+CREATE INDEX IF NOT EXISTS idx_project_artifacts_created_at ON project_artifacts(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_email_templates_project_artifact_id ON email_templates(project_artifact_id);
+CREATE INDEX IF NOT EXISTS idx_email_templates_company_id ON email_templates(company_id);
+CREATE INDEX IF NOT EXISTS idx_email_templates_created_by ON email_templates(created_by);
+CREATE INDEX IF NOT EXISTS idx_email_templates_template_type ON email_templates(template_type);
+CREATE INDEX IF NOT EXISTS idx_email_templates_created_at ON email_templates(created_at DESC);
+
+-- Step 4: Add updated_at triggers
+CREATE TRIGGER update_project_artifacts_updated_at 
+    BEFORE UPDATE ON project_artifacts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_email_templates_updated_at 
+    BEFORE UPDATE ON email_templates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Step 5: Enable Row Level Security
+ALTER TABLE project_artifacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
+
+-- Step 6: Create RLS policies for project_artifacts
+CREATE POLICY "project_artifacts_no_anon_access" ON project_artifacts
+  AS RESTRICTIVE
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "project_artifacts_select_company" ON project_artifacts
+  FOR SELECT
+  TO authenticated
+  USING (company_id = public.get_user_company_id());
+
+CREATE POLICY "project_artifacts_insert_own_company" ON project_artifacts
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    company_id = public.get_user_company_id()
+    AND created_by = public.get_current_user_id()
+  );
+
+CREATE POLICY "project_artifacts_update_own" ON project_artifacts
+  FOR UPDATE
+  TO authenticated
+  USING (created_by = public.get_current_user_id())
+  WITH CHECK (created_by = public.get_current_user_id());
+
+CREATE POLICY "project_artifacts_delete_own" ON project_artifacts
+  FOR DELETE
+  TO authenticated
+  USING (created_by = public.get_current_user_id());
+
+CREATE POLICY "project_artifacts_service_role_all" ON project_artifacts
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Step 7: Create RLS policies for email_templates
+CREATE POLICY "email_templates_no_anon_access" ON email_templates
+  AS RESTRICTIVE
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY "email_templates_select_company" ON email_templates
+  FOR SELECT
+  TO authenticated
+  USING (company_id = public.get_user_company_id());
+
+CREATE POLICY "email_templates_insert_own_company" ON email_templates
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    company_id = public.get_user_company_id()
+    AND created_by = public.get_current_user_id()
+  );
+
+CREATE POLICY "email_templates_update_own" ON email_templates
+  FOR UPDATE
+  TO authenticated
+  USING (created_by = public.get_current_user_id())
+  WITH CHECK (created_by = public.get_current_user_id());
+
+CREATE POLICY "email_templates_delete_own" ON email_templates
+  FOR DELETE
+  TO authenticated
+  USING (created_by = public.get_current_user_id());
+
+CREATE POLICY "email_templates_service_role_all" ON email_templates
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+-- Step 8: Add helpful comments
+COMMENT ON TABLE project_artifacts IS 'AI-generated project artifacts from the Project Idea Generator Tool';
+COMMENT ON COLUMN project_artifacts.type IS 'Type of project artifact generated by the agent';
+COMMENT ON COLUMN project_artifacts.research_session_id IS 'Links to the research session that provided the data for this artifact';
+COMMENT ON COLUMN project_artifacts.source_findings IS 'Array of research finding IDs that contributed to this project idea';
+COMMENT ON COLUMN project_artifacts.priority_score IS 'AI-calculated priority score from 0-100 based on impact, effort, and feasibility';
+COMMENT ON COLUMN project_artifacts.confidence_score IS 'AI confidence in the project assessment from 0.0-1.0';
+
+COMMENT ON TABLE email_templates IS 'AI-generated email templates from the Email Template Creator Tool';
+COMMENT ON COLUMN email_templates.project_artifact_id IS 'Links to the project artifact this email is promoting';
+COMMENT ON COLUMN email_templates.personalization_elements IS 'Array of personalization elements extracted from research';
+COMMENT ON COLUMN email_templates.research_citations IS 'Array of research citations used for credibility';
+COMMENT ON COLUMN email_templates.estimated_response_rate IS 'AI-estimated response rate for this email template';
+COMMENT ON COLUMN email_templates.a_b_variants IS 'A/B testing variants of the email for optimization';
+
+-- Step 9: Create a view for agent workflow insights
+CREATE OR REPLACE VIEW agent_workflow_summary AS
+SELECT 
+  c.name as company_name,
+  c.id as company_id,
+  COUNT(DISTINCT crs.id) as research_sessions,
+  COUNT(DISTINCT pa.id) as project_artifacts,
+  COUNT(DISTINCT et.id) as email_templates,
+  MAX(pa.priority_score) as max_priority_score,
+  AVG(pa.confidence_score) as avg_confidence_score,
+  AVG(et.estimated_response_rate) as avg_estimated_response_rate,
+  MAX(pa.created_at) as latest_artifact_created,
+  MAX(et.created_at) as latest_email_created
+FROM companies c
+LEFT JOIN company_research_sessions crs ON c.id = crs.company_id
+LEFT JOIN project_artifacts pa ON c.id = pa.company_id
+LEFT JOIN email_templates et ON c.id = et.company_id
+WHERE c.is_ai_related = true
+GROUP BY c.id, c.name
+ORDER BY latest_artifact_created DESC NULLS LAST;
+
+COMMENT ON VIEW agent_workflow_summary IS 'Summary view of agent-generated content per company for analytics and monitoring';
+
+-- Step 10: Verification
+DO $$
+BEGIN
+  -- Check if project_artifacts table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'project_artifacts') THEN
+    RAISE NOTICE 'SUCCESS: project_artifacts table created successfully';
+  ELSE
+    RAISE NOTICE 'ERROR: project_artifacts table was not created';
+  END IF;
+  
+  -- Check if email_templates table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
+    RAISE NOTICE 'SUCCESS: email_templates table created successfully';
+  ELSE
+    RAISE NOTICE 'ERROR: email_templates table was not created';
+  END IF;
+  
+  -- Check if view exists
+  IF EXISTS (SELECT 1 FROM information_schema.views WHERE table_name = 'agent_workflow_summary') THEN
+    RAISE NOTICE 'SUCCESS: agent_workflow_summary view created successfully';
+  ELSE
+    RAISE NOTICE 'ERROR: agent_workflow_summary view was not created';
+  END IF;
+  
+  RAISE NOTICE 'Agent architecture tables migration completed successfully!';
+END $$;

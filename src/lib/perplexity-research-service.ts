@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { safeFetch, getSSRFConfig } from './security/url-validator';
+import { logExternalApiCall, logError } from './logger';
 
 // Types for Perplexity API
 export interface PerplexityMessage {
@@ -174,24 +176,38 @@ export class PerplexityResearchService {
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        const apiUrl = `${this.baseUrl}/chat/completions`;
+        const startTime = Date.now();
+        
+        const response = await safeFetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
           },
           body: JSON.stringify(request),
-        });
+        }, getSSRFConfig('perplexity'));
+
+        const duration = Date.now() - startTime;
+        logExternalApiCall('perplexity', apiUrl, duration);
 
         if (!response.ok) {
           const errorBody = await response.text();
           
           // Don't retry authentication errors (401) or client errors (400-499)
           if (response.status === 401) {
+            logError('Perplexity API authentication failed', { 
+              status: response.status,
+              errorBody 
+            });
             throw new Error(`Authentication failed: Invalid or expired API key`);
           }
           
           if (response.status >= 400 && response.status < 500) {
+            logError('Perplexity API client error', { 
+              status: response.status,
+              errorBody 
+            });
             throw new Error(`Client error ${response.status}: ${errorBody}`);
           }
           

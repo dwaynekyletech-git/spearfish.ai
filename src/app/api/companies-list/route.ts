@@ -7,8 +7,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
-import { createSpearfishDatabaseService } from '@/lib/spearfish-database-service';
-import { CompanyData, spearfishScoringService } from '@/lib/spearfish-scoring-service';
+import { createSpearfishDatabaseService } from '../../../lib/spearfish-database-service';
+import { CompanyData, spearfishScoringService } from '../../../lib/spearfish-scoring-service';
+
+// Force this route to be dynamic
+export const dynamic = 'force-dynamic';
 
 // Query parameters schema
 const QueryParamsSchema = z.object({
