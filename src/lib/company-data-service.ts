@@ -6,6 +6,7 @@
  */
 
 import { YCApiClient, YCCompany, createYCClient } from './yc-api';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 
 // Re-export types for use in other modules
 export type { YCCompany } from './yc-api';
@@ -193,13 +194,13 @@ export class CompanyDataService {
     };
 
     try {
-      console.log(`Fetching companies from batches: ${options.batches.join(', ')}`);
+      logInfo('Fetching companies from batches', { batches: options.batches.join(', ') });
       
       // Fetch companies using the YC API client
       const companies = await this.ycClient.getCompaniesByBatch(options.batches);
       result.totalFetched = companies.length;
 
-      console.log(`Fetched ${companies.length} companies, starting validation...`);
+      logDebug('Fetched companies, starting validation', { companiesCount: companies.length });
 
       // Process companies with validation
       for (const company of companies) {
@@ -240,7 +241,7 @@ export class CompanyDataService {
       }
 
       result.success = true;
-      console.log(`Processing complete: ${result.validCompanies.length} valid, ${result.invalidCompanies.length} invalid companies`);
+      logInfo('Processing complete', { validCompanies: result.validCompanies.length, invalidCompanies: result.invalidCompanies.length });
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

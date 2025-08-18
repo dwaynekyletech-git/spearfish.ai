@@ -82,6 +82,12 @@ export interface FetchOptions {
 }
 
 // =============================================================================
+// Imports
+// =============================================================================
+
+import { safeFetch, getSSRFConfig } from './security/url-validator';
+
+// =============================================================================
 // Y Combinator API Client Class
 // =============================================================================
 
@@ -310,13 +316,13 @@ export class YCApiClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-        const response = await fetch(url, {
+        const response = await safeFetch(url, {
           signal: controller.signal,
           headers: {
             'Accept': 'application/json',
             'User-Agent': 'SpearfishAI/1.0'
           }
-        });
+        }, getSSRFConfig('general'));
 
         clearTimeout(timeoutId);
 

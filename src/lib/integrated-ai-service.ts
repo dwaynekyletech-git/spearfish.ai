@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Integrated AI Classification + Database Service
  * 
@@ -7,6 +6,7 @@
  */
 
 import { aiClassificationService, AIClassificationResult, BatchClassificationResult } from './ai-classification-service';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 import { ycDatabase } from './yc-database';
 import { getTargetAICompanies, getTargetBatchCompanies } from './yc-api';
 import { YCCompany, ValidatedCompany } from './company-data-service';
@@ -83,10 +83,10 @@ export class IntegratedAIService {
     };
 
     try {
-      console.log('🚀 Starting integrated YC company processing...');
+      logInfo('Starting integrated YC company processing');
       
       // Step 1: Fetch companies from YC API
-      console.log('📥 Fetching companies from YC API...');
+      logDebug('Fetching companies from YC API');
       
       const companies = options.batches 
         ? await getTargetBatchCompanies()
@@ -98,7 +98,7 @@ export class IntegratedAIService {
       }
 
       result.companiesProcessed = targetCompanies.length;
-      console.log(`📊 Processing ${result.companiesProcessed} companies`);
+      logInfo('Processing companies', { companiesProcessed: result.companiesProcessed });
 
       // Update sync log
       await this.database.updateSyncLog(syncLogId, {
@@ -112,12 +112,12 @@ export class IntegratedAIService {
       if (!options.forceReclassify) {
         // Only classify companies not already classified
         companiesToClassify = await this.filterUnclassifiedCompanies(targetCompanies);
-        console.log(`🔍 ${companiesToClassify.length} companies need AI classification`);
+        logInfo('Companies need AI classification', { count: companiesToClassify.length });
       }
 
       // Step 3: AI Classification
       if (companiesToClassify.length > 0) {
-        console.log('🤖 Starting AI classification...');
+        logDebug('Starting AI classification');
         
         const classificationResults = await this.aiService.classifyCompaniesBatch(
           companiesToClassify,
@@ -137,10 +137,10 @@ export class IntegratedAIService {
           highConfidenceCount: stats.highConfidence
         };
 
-        console.log(`✅ AI classification complete: ${stats.aiRelated} AI-related companies found`);
+        logInfo('AI classification complete', { aiRelatedCompanies: stats.aiRelated });
 
         // Step 4: Store in database
-        console.log('💾 Storing companies in database...');
+        logDebug('Storing companies in database');
         
         const storageResults = await this.storeClassificationResults(
           classificationResults,
@@ -151,7 +151,7 @@ export class IntegratedAIService {
         result.aiRelatedFound = storageResults.aiRelatedCount;
         result.errors.push(...storageResults.errors);
 
-        console.log(`📁 Database storage complete: ${result.companiesStoredInDB} companies stored`);
+        logInfo('Database storage complete', { companiesStored: result.companiesStoredInDB });
       }
 
       // Step 5: Update sync log with final results
@@ -163,8 +163,8 @@ export class IntegratedAIService {
 
       result.processingTime = Date.now() - startTime;
       
-      console.log('🎉 Integrated processing complete!');
-      console.log(`📈 Results: ${result.aiRelatedFound} AI companies found in ${result.processingTime}ms`);
+      logInfo('Integrated processing complete');
+      logInfo('Processing results', { aiRelatedFound: result.aiRelatedFound, processingTime: result.processingTime });
 
       return result;
 
@@ -206,7 +206,7 @@ export class IntegratedAIService {
       };
     }
 
-    console.log(`🔄 Classifying ${companies.length} existing companies...`);
+    logInfo('Classifying existing companies', { count: companies.length });
 
     // Create sync log
     const syncLogId = await this.database.createSyncLog(
@@ -399,19 +399,32 @@ export class IntegratedAIService {
       id: dbCompany.yc_api_id || 0,
       name: dbCompany.name,
       slug: dbCompany.slug || '',
+      former_names: Array.isArray(dbCompany.former_names) ? dbCompany.former_names : [],
       website: dbCompany.website_url || '',
+      all_locations: dbCompany.all_locations || '',
       one_liner: dbCompany.one_liner || '',
       long_description: dbCompany.long_description || '',
       batch: dbCompany.batch || '',
       status: dbCompany.status || 'Active',
       industry: dbCompany.industry || '',
       subindustry: dbCompany.subindustry || '',
+      industries: Array.isArray(dbCompany.industries) ? dbCompany.industries : [dbCompany.industry || ''],
       tags: Array.isArray(dbCompany.tags) ? dbCompany.tags : [],
+      tags_highlighted: Array.isArray(dbCompany.tags_highlighted) ? dbCompany.tags_highlighted : [],
       regions: Array.isArray(dbCompany.regions) ? dbCompany.regions : [],
       team_size: dbCompany.team_size || 0,
       launched_at: dbCompany.launched_at || 0,
       small_logo_thumb_url: dbCompany.small_logo_thumb_url,
-      isHiring: dbCompany.is_hiring || false
+      isHiring: dbCompany.is_hiring || false,
+      nonprofit: dbCompany.nonprofit || false,
+      top_company: dbCompany.top_company || false,
+      stage: dbCompany.stage,
+      app_video_public: dbCompany.app_video_public || false,
+      demo_day_video_public: dbCompany.demo_day_video_public || false,
+      app_answers: dbCompany.app_answers,
+      question_answers: dbCompany.question_answers || false,
+      url: dbCompany.url || '',
+      api: dbCompany.api || ''
     };
   }
 }

@@ -15,6 +15,7 @@ import {
   RESEARCH_QUERY_TEMPLATES 
 } from './research-query-templates';
 import { createClient } from '@supabase/supabase-js';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 
 // Types for the research service
 export interface ResearchSession {
@@ -255,7 +256,7 @@ export class CompanyResearchService {
     if (!openaiKey) {
       console.warn('⚠️  OPENAI_API_KEY not found - AI content processing will be disabled');
     } else {
-      console.log('✅ OpenAI API key found - AI content processing enabled');
+      logInfo('OpenAI API key found - AI content processing enabled');
     }
     
     this.openai = new OpenAI({
@@ -508,7 +509,7 @@ export class CompanyResearchService {
         if (currentProgress) {
           // Analyze and categorize sources
           const citations = result.citations || [];
-          console.log(`🔍 ${template.name} - Citations: ${citations.length}`);
+          logDebug('Template research citations', { templateName: template.name, citationsCount: citations.length });
           const analyzedSources = citations.length > 0 ? this.analyzeSources(citations) : [];
           
           const sourceInfo: QuerySourceInfo = {
@@ -572,7 +573,7 @@ export class CompanyResearchService {
       if (error || !result.content) continue;
 
       // Use AI to intelligently extract findings from the research content
-      console.log(`🤖 Starting AI analysis for ${template.name} (${result.content.length} chars)`);
+      logDebug('Starting AI analysis', { templateName: template.name, contentLength: result.content.length });
       const aiExtractedFindings = await this.extractFindingsWithAI(
         sessionId,
         companyId,
@@ -580,7 +581,7 @@ export class CompanyResearchService {
         template,
         result
       );
-      console.log(`✅ AI extracted ${aiExtractedFindings.length} findings from ${template.name}`);
+      logInfo('AI extracted findings', { findingsCount: aiExtractedFindings.length, templateName: template.name });
 
       findings.push(...aiExtractedFindings);
     }
@@ -599,7 +600,7 @@ export class CompanyResearchService {
     try {
       // Check if OpenAI is available
       if (!process.env.OPENAI_API_KEY) {
-        console.log('🔄 No OpenAI key - falling back to rule-based extraction');
+        logWarn('No OpenAI key - falling back to rule-based extraction');
         return this.parseResultIntoFindings(sessionId, companyId, companyName, template, result);
       }
       // Create a comprehensive prompt for OpenAI to analyze the research
@@ -770,14 +771,14 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
         updated_at: new Date()
       }));
 
-      console.log(`AI extracted ${findings.length} findings from ${template.name} research`);
+      logInfo('AI extracted findings from research', { findingsCount: findings.length, templateName: template.name });
       return findings;
 
     } catch (error) {
       console.error('Error in AI content analysis:', error);
       
       // Fallback to old method if AI fails
-      console.log('Falling back to rule-based extraction');
+      logDebug('Falling back to rule-based extraction');
       return this.parseResultIntoFindings(sessionId, companyId, companyName, template, result);
     }
   }
@@ -1137,7 +1138,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
 
   private async saveFindings(findings: ResearchFinding[]): Promise<void> {
     if (!findings.length) {
-      console.log('No findings to save');
+      logDebug('No findings to save');
       return;
     }
 
@@ -1149,7 +1150,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       verified_at: finding.verified_at?.toISOString() || null
     }));
 
-    console.log(`💾 Saving ${findingsForDb.length} research findings to database`);
+    logInfo('Saving research findings to database', { findingsCount: findingsForDb.length });
     
     const { data, error } = await this.supabase
       .from('research_findings')
@@ -1173,7 +1174,7 @@ Focus on quality over quantity. Extract only meaningful insights that would be v
       throw new Error(`Failed to save research findings: ${error.message}`);
     }
 
-    console.log(`✅ Successfully saved ${data?.length || 0} research findings`);
+    logInfo('Successfully saved research findings', { savedCount: data?.length || 0 });
   }
 
   // Public API methods

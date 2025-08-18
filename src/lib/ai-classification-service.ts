@@ -245,7 +245,7 @@ export class AIClassificationService {
     const results: BatchClassificationResult[] = [];
     const batchSize = 5; // Process in small batches to avoid rate limits
     
-    console.log(`Starting batch classification of ${companies.length} companies...`);
+    logInfo('Starting batch classification', { companiesCount: companies.length });
 
     for (let i = 0; i < companies.length; i += batchSize) {
       const batch = companies.slice(i, i + batchSize);
@@ -275,7 +275,7 @@ export class AIClassificationService {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
 
-      console.log(`Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(companies.length / batchSize)}`);
+      logDebug('Processed classification batch', { batchNumber: Math.floor(i / batchSize) + 1, totalBatches: Math.ceil(companies.length / batchSize) });
       
       // Delay between batches
       if (i + batchSize < companies.length) {
@@ -283,7 +283,7 @@ export class AIClassificationService {
       }
     }
 
-    console.log(`Batch classification complete. Processed ${results.length} companies.`);
+    logInfo('Batch classification complete', { processedCount: results.length });
     return results;
   }
 

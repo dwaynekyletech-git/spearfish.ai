@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { CompanyTeamData, FounderProfile } from './founder-scraper-service';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 
 // =============================================================================
 // Type Definitions
@@ -195,7 +196,7 @@ export class FounderDatabaseService {
    */
   async saveTeamData(companyId: string, teamData: CompanyTeamData): Promise<void> {
     try {
-      console.log(`💾 Saving team data for company ${companyId}...`);
+      logDebug('Saving team data for company', { companyId });
 
       // Save all founders
       const founderPromises = teamData.founders.map(founder => 
@@ -203,7 +204,7 @@ export class FounderDatabaseService {
       );
       
       await Promise.all(founderPromises);
-      console.log(`✅ Saved ${teamData.founders.length} founders`);
+      logInfo('Saved founders', { foundersCount: teamData.founders.length });
 
       // Save basic funding summary with just sources (no funding amounts)
       const basicFundingData = {
@@ -217,7 +218,7 @@ export class FounderDatabaseService {
       };
       
       await this.saveFundingSummary(companyId, basicFundingData);
-      console.log(`✅ Saved team sources`);
+      logDebug('Saved team sources');
 
     } catch (error) {
       console.error('Failed to save team data:', error);

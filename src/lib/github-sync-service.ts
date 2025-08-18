@@ -7,6 +7,7 @@
 import { githubService } from './github-service';
 import { githubStorageService } from './github-storage-service';
 import { createServiceClient } from './supabase-server';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 import type { 
   GitHubSyncLog, 
   GitHubSyncOptions,
@@ -134,7 +135,7 @@ export class GitHubSyncService {
         const waitTime = resetTime.getTime() - Date.now();
         
         if (waitTime > 0) {
-          console.log(`Rate limit reached, waiting ${Math.ceil(waitTime / 1000)} seconds...`);
+          logWarn('Rate limit reached, waiting', { waitTimeSeconds: Math.ceil(waitTime / 1000) });
           await new Promise(resolve => setTimeout(resolve, waitTime + 1000));
         }
       }
@@ -146,7 +147,7 @@ export class GitHubSyncService {
         return { success: false, error: result.error };
       }
 
-      console.log(`✅ Synced ${item.fullName} - ${result.data?.repository.stars_count} stars`);
+      logDebug('Repository synced', { fullName: item.fullName, stars: result.data?.repository.stars_count });
       return { success: true };
 
     } catch (error) {
@@ -186,7 +187,7 @@ export class GitHubSyncService {
             if (item.retryCount < this.maxRetries) {
               item.retryCount++;
               item.lastError = result.error;
-              console.log(`Retrying ${item.fullName} (attempt ${item.retryCount}/${this.maxRetries})`);
+              logDebug('Retrying repository sync', { fullName: item.fullName, attempt: item.retryCount, maxRetries: this.maxRetries });
               queue.push(item); // Add back to end of queue
             } else {
               results.failed++;
@@ -245,11 +246,11 @@ export class GitHubSyncService {
       }
 
       syncLog = syncLogResult.data!;
-      console.log(`🚀 Starting ${options.sync_type} sync (Log ID: ${syncLog.id})`);
+      logInfo('Starting sync', { syncType: options.sync_type, syncLogId: syncLog.id });
 
       // Build sync queue
       const queue = await this.buildSyncQueue(options);
-      console.log(`📋 Queue built with ${queue.length} repositories`);
+      logInfo('Sync queue built', { repositoryCount: queue.length });
 
       if (queue.length === 0) {
         await githubStorageService.updateSyncLog(syncLog.id, {
@@ -291,7 +292,7 @@ export class GitHubSyncService {
         rate_limit_remaining: finalRateLimit.remaining,
       });
 
-      console.log(`✅ Sync completed: ${results.processed} processed, ${results.failed} failed`);
+      logInfo('Sync completed', { processed: results.processed, failed: results.failed });
 
       return {
         success: results.failed === 0 || results.processed > 0,
@@ -332,7 +333,7 @@ export class GitHubSyncService {
    * Execute daily sync for all repositories
    */
   async executeDailySync(): Promise<SyncResult> {
-    console.log('🌅 Starting daily GitHub sync...');
+    logInfo('Starting daily GitHub sync');
     
     return this.executeSync({
       sync_type: 'incremental',
@@ -344,7 +345,7 @@ export class GitHubSyncService {
    * Execute full sync for all repositories (use sparingly)
    */
   async executeFullSync(): Promise<SyncResult> {
-    console.log('🔄 Starting full GitHub sync...');
+    logInfo('Starting full GitHub sync');
     
     return this.executeSync({
       sync_type: 'full',
@@ -356,7 +357,7 @@ export class GitHubSyncService {
    * Sync repositories for a specific company
    */
   async syncCompanyRepositories(companyId: string): Promise<SyncResult> {
-    console.log(`🏢 Starting company sync for ${companyId}...`);
+    logInfo('Starting company sync', { companyId });
     
     return this.executeSync({
       sync_type: 'incremental',
@@ -368,7 +369,7 @@ export class GitHubSyncService {
    * Sync a specific repository
    */
   async syncSingleRepository(repositoryId: string): Promise<SyncResult> {
-    console.log(`📁 Starting single repository sync for ${repositoryId}...`);
+    logInfo('Starting single repository sync', { repositoryId });
     
     return this.executeSync({
       sync_type: 'repository',

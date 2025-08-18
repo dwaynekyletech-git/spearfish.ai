@@ -6,6 +6,8 @@
  */
 
 import { CompanyData } from './spearfish-scoring-service';
+import { safeFetch, getSSRFConfig } from './security/url-validator';
+import { logInfo, logDebug, logWarn, logError } from './logger';
 
 // =============================================================================
 // Type Definitions
@@ -72,11 +74,11 @@ export class FounderScraperService {
       // Scrape YC company page (only source needed - all founders should be found here)
       const ycUrl = (company as any).yc_url || `https://www.ycombinator.com/companies/${company.name.toLowerCase().replace(/\s+/g, '')}`;
       
-      console.log(`🔍 Scraping YC page: ${ycUrl}`);
+      logDebug('Scraping YC page', { ycUrl });
       const ycData = await this.scrapeYCCompanyPage(ycUrl);
       this.mergeTeamData(teamData, ycData);
       
-      console.log(`✅ Found ${ycData.founders?.length || 0} founders on YC page`);
+      logInfo('Found founders on YC page', { foundersCount: ycData.founders?.length || 0, ycUrl });
       return this.cleanTeamData(teamData);
 
     } catch (error) {
@@ -94,11 +96,11 @@ export class FounderScraperService {
    */
   private async scrapeYCCompanyPage(ycUrl: string): Promise<Partial<CompanyTeamData>> {
     try {
-      console.log(`🔍 Fetching YC page: ${ycUrl}`);
-      const response = await fetch(ycUrl);
+      logDebug('Fetching YC page', { ycUrl });
+      const response = await safeFetch(ycUrl, {}, getSSRFConfig('general'));
       
       if (!response.ok) {
-        console.log(`❌ YC page not found: ${ycUrl} (${response.status})`);
+        logWarn('YC page not found', { ycUrl, status: response.status });
         return { sources: [ycUrl] };
       }
       
@@ -109,18 +111,18 @@ export class FounderScraperService {
         sources: [ycUrl]
       };
 
-      console.log(`✅ Successfully fetched YC page, parsing founders...`);
+      logDebug('Successfully fetched YC page, parsing founders', { ycUrl });
 
       // First, try to find the "Active Founders" section specifically
       const activeFounders = this.parseActiveFoundersSection(html);
       if (activeFounders.length > 0) {
-        console.log(`✅ Found ${activeFounders.length} founders in Active Founders section`);
+        logInfo('Found founders in Active Founders section', { foundersCount: activeFounders.length });
         data.founders!.push(...activeFounders);
         return data;
       }
 
       // If no Active Founders section, fall back to other patterns
-      console.log(`🔍 No Active Founders section found, trying other patterns...`);
+      logDebug('No Active Founders section found, trying other patterns');
 
       // YC company pages have multiple possible founder section formats
       const founderSectionPatterns = [
@@ -144,23 +146,23 @@ export class FounderScraperService {
           if (founder && !foundFounders.has(founder.name)) {
             foundFounders.add(founder.name);
             data.founders!.push(founder);
-            console.log(`✅ Found YC founder: ${founder.name} - ${founder.title}`);
+            logDebug('Found YC founder', { name: founder.name, title: founder.title });
           }
         }
       }
 
       // If structured founder sections didn't work, try general text parsing
       if (data.founders!.length === 0) {
-        console.log(`🔍 No structured founder data found, trying general text parsing...`);
+        logDebug('No structured founder data found, trying general text parsing');
         const textFounders = this.parseFoundersFromYCText(html);
         data.founders!.push(...textFounders);
         
         for (const founder of textFounders) {
-          console.log(`✅ Found YC founder via text parsing: ${founder.name} - ${founder.title}`);
+          logDebug('Found YC founder via text parsing', { name: founder.name, title: founder.title });
         }
       }
 
-      console.log(`📊 YC page scraping results: ${data.founders!.length} founders found`);
+      logInfo('YC page scraping results', { foundersCount: data.founders!.length });
       return data;
 
     } catch (error) {
@@ -185,7 +187,7 @@ export class FounderScraperService {
       }
       
       const foundersSection = activeFoundersMatch[1];
-      console.log('🔍 Found Active Founders section, parsing individual founders...');
+      logDebug('Found Active Founders section, parsing individual founders');
       
       // Based on the HTML structure, each founder is in a card with specific patterns
       // Look for founder cards with the structure: image, name (in text-xl font-bold), "Founder" title, bio
@@ -222,13 +224,13 @@ export class FounderScraperService {
             bio: bio
           });
           
-          console.log(`✅ Found founder in Active Founders section: ${name}`);
+          logDebug('Found founder in Active Founders section', { name });
         }
       }
       
       // If the main pattern didn't find multiple founders, try a simpler approach
       if (founders.length <= 1) {
-        console.log('🔍 Trying simpler pattern to find more founders...');
+        logDebug('Trying simpler pattern to find more founders');
         
         // Look for all "text-xl font-bold" divs that contain person names
         const namePattern = /<div[^>]*class="[^"]*text-xl font-bold[^"]*"[^>]*>([A-Z][a-z]+(?:\s+[A-Z]\.?)?\s+[A-Z][a-z]+)<\/div>/gi;
@@ -249,7 +251,7 @@ export class FounderScraperService {
                 title: 'Founder'
               });
               foundNames.add(name);
-              console.log(`✅ Found additional founder: ${name}`);
+              logDebug('Found additional founder', { name });
             }
           }
         }
@@ -257,7 +259,7 @@ export class FounderScraperService {
       
       // Pattern 3: Fallback - Look for any person name followed by "Founder" in the section
       if (founders.length === 0) {
-        console.log('🔍 Using fallback pattern to find founders...');
+        logDebug('Using fallback pattern to find founders');
         
         // Look for any div that contains a person's name followed by "Founder"
         const altPattern = />([A-Z][a-z]+(?:\s+[A-Z]\.?)?\s+[A-Z][a-z]+)<\/[^>]+>[\s\S]*?Founder/gi;
@@ -270,7 +272,7 @@ export class FounderScraperService {
               name: name,
               title: 'Founder'
             });
-            console.log(`✅ Found founder via fallback pattern: ${name}`);
+            logDebug('Found founder via fallback pattern', { name });;
           }
         }
       }
