@@ -5,7 +5,7 @@
  * with historical tracking and batch operations.
  */
 
-import { createServerClient } from './supabase-server';
+import { createServerClient, createServiceClient } from './supabase-server';
 import { createClerkSupabaseClient } from './supabase-client';
 import { CompanyData, ScoringResult, spearfishScoringService } from './spearfish-scoring-service';
 import { z } from 'zod';
@@ -63,14 +63,25 @@ export type BatchScoreUpdate = z.infer<typeof BatchScoreUpdateSchema>;
 export class SpearfishDatabaseService {
   private supabase: Promise<any> | any;
   private isServer: boolean;
+  private useServiceRole: boolean;
 
-  constructor(useServerClient: boolean = false) {
+  constructor(useServerClient: boolean = false, useServiceRole: boolean = false) {
     this.isServer = useServerClient;
-    this.supabase = useServerClient ? createServerClient() : createClerkSupabaseClient();
+    this.useServiceRole = useServiceRole;
+    
+    if (useServiceRole) {
+      this.supabase = createServiceClient();
+    } else if (useServerClient) {
+      this.supabase = createServerClient();
+    } else {
+      this.supabase = createClerkSupabaseClient();
+    }
   }
 
   private async getSupabase() {
-    if (this.isServer) {
+    if (this.useServiceRole) {
+      return this.supabase;
+    } else if (this.isServer) {
       return await this.supabase;
     }
     return this.supabase;
@@ -343,10 +354,13 @@ export class SpearfishDatabaseService {
       olderThan?: Date;
       batchSize?: number;
       batches?: string[];
+      forceAll?: boolean;
+      algorithmVersion?: string;
     } = {}
   ): Promise<CompanyData[]> {
     try {
       const supabase = await this.getSupabase();
+      console.log('🔍 Database service: Using server client:', this.isServer);
       let query = supabase
         .from('companies')
         .select(`
@@ -372,15 +386,38 @@ export class SpearfishDatabaseService {
           updated_at
         `)
         .eq('sync_status', 'synced');
+        
+      console.log('🔍 Initial query created with sync_status = synced');
 
-      // Find companies with old scores or no scores
-      if (options.olderThan) {
-        query = query.or(`spearfish_score.is.null,updated_at.lt.${options.olderThan.toISOString()}`);
+      // Force all companies if requested (for algorithm version updates)
+      if (options.forceAll) {
+        // No additional filters - process all synced companies
+        console.log('📋 ForceAll mode: Processing all synced companies');
+      } else if (options.algorithmVersion) {
+        // Find companies that don't have the latest algorithm version
+        // This requires checking the score_history table for the latest score
+        const { data: companiesWithOldVersions, error: versionError } = await supabase.rpc(
+          'get_companies_with_old_algorithm_version',
+          { target_version: options.algorithmVersion }
+        );
+        
+        if (!versionError && companiesWithOldVersions) {
+          const companyIds = companiesWithOldVersions.map((c: any) => c.company_id);
+          query = query.in('id', companyIds);
+        } else {
+          // Fallback: treat as forceAll if the RPC doesn't exist
+          console.warn('RPC function not available, falling back to time-based filtering');
+        }
       } else {
-        query = query.is('spearfish_score', null);
+        // Find companies with old scores or no scores
+        if (options.olderThan) {
+          query = query.or(`spearfish_score.is.null,updated_at.lt.${options.olderThan.toISOString()}`);
+        } else {
+          query = query.is('spearfish_score', null);
+        }
       }
 
-      if (options.batches && options.batches.length > 0) {
+      if (options.batches && options.batches.length > 0 && !options.forceAll) {
         query = query.in('batch', options.batches);
       }
 
@@ -395,6 +432,7 @@ export class SpearfishDatabaseService {
         throw error;
       }
 
+      console.log(`📊 Found ${(data || []).length} companies for recalculation (forceAll: ${options.forceAll})`);
       return data || [];
     } catch (error) {
       console.error('Error in getCompaniesNeedingRecalculation:', error);
@@ -500,8 +538,8 @@ export class SpearfishDatabaseService {
 /**
  * Create a new spearfish database service instance
  */
-export function createSpearfishDatabaseService(useServerClient: boolean = false): SpearfishDatabaseService {
-  return new SpearfishDatabaseService(useServerClient);
+export function createSpearfishDatabaseService(useServerClient: boolean = false, useServiceRole: boolean = false): SpearfishDatabaseService {
+  return new SpearfishDatabaseService(useServerClient, useServiceRole);
 }
 
 /**

@@ -59,16 +59,20 @@ export const CompanyDataSchema = z.object({
   one_liner: z.string().optional(),
   long_description: z.string().optional(),
   website_url: z.string().optional(),
-  team_size: z.number().optional(),
+  team_size: z.number().nullable().optional(),
   launched_at: z.number().optional(), // Unix timestamp
   status: z.enum(['Active', 'Acquired', 'Public', 'Inactive']).default('Active'),
-  tags: z.array(z.string()).default([]),
-  regions: z.array(z.string()).default([]),
+  tags: z.union([z.array(z.string()), z.string()]).transform(val => 
+    typeof val === 'string' ? (val ? val.split(',').map(s => s.trim()) : []) : val
+  ).default([]),
+  regions: z.union([z.array(z.string()), z.string()]).transform(val => 
+    typeof val === 'string' ? (val ? val.split(',').map(s => s.trim()) : []) : val
+  ).default([]),
   is_hiring: z.boolean().default(false),
   small_logo_thumb_url: z.string().optional(),
   github_repos: z.array(z.any()).default([]),
   huggingface_models: z.array(z.any()).default([]),
-  ai_confidence_score: z.number().min(0).max(1).optional(),
+  ai_confidence_score: z.number().min(0).max(1).nullable().optional(),
   spearfish_score: z.number().min(0).max(10).optional(),
 });
 
@@ -108,7 +112,7 @@ export const SCORING_CONFIG = {
     /\d{4}$/,
     /^[A-Z]{2,4}$/,
   ],
-  ALGORITHM_VERSION: '1.0',
+  ALGORITHM_VERSION: '2.0', // Updated to use real GitHub and HuggingFace data
 } as const;
 
 export const DEFAULT_WEIGHTS: ScoringWeights = {
@@ -254,20 +258,71 @@ export class SpearfishScoringAlgorithm {
 
   /**
    * Evaluate GitHub activity score (Medium weight)
+   * Now uses real GitHub data including stars, forks, and activity metrics
    */
   private evaluateGithubActivity(company: CompanyData): number {
     if (!company.github_repos || company.github_repos.length === 0) {
-      return 2; // Low default for no GitHub presence
+      return 1; // Low default for no GitHub presence
     }
     
-    // This is a simplified implementation
-    // In a real system, you'd fetch actual GitHub data
-    const repoCount = company.github_repos.length;
+    // Calculate metrics from real GitHub data
+    const repos = company.github_repos as any[];
+    let totalStars = 0;
+    let totalForks = 0;
+    let activeRepos = 0;
+    let maxStarsPerRepo = 0;
     
-    if (repoCount >= 10) return 10;
-    if (repoCount >= 5) return 7;
-    if (repoCount >= 2) return 5;
-    return 3;
+    repos.forEach(repo => {
+      const stars = repo.stars_count || 0;
+      const forks = repo.forks_count || 0;
+      
+      totalStars += stars;
+      totalForks += forks;
+      maxStarsPerRepo = Math.max(maxStarsPerRepo, stars);
+      
+      // Count as active if it has recent activity (stars or forks)
+      if (stars > 0 || forks > 0) {
+        activeRepos++;
+      }
+    });
+    
+    const repoCount = repos.length;
+    const avgStarsPerRepo = repoCount > 0 ? totalStars / repoCount : 0;
+    
+    // Scoring based on multiple factors
+    let score = 0;
+    
+    // Factor 1: Total star count (40% of GitHub score)
+    if (totalStars >= 10000) score += 4.0;
+    else if (totalStars >= 5000) score += 3.5;
+    else if (totalStars >= 1000) score += 3.0;
+    else if (totalStars >= 500) score += 2.5;
+    else if (totalStars >= 100) score += 2.0;
+    else if (totalStars >= 50) score += 1.5;
+    else if (totalStars >= 10) score += 1.0;
+    else if (totalStars > 0) score += 0.5;
+    
+    // Factor 2: Repository count and quality (30% of GitHub score)
+    if (repoCount >= 10 && avgStarsPerRepo >= 50) score += 3.0;
+    else if (repoCount >= 5 && avgStarsPerRepo >= 20) score += 2.5;
+    else if (repoCount >= 3 && avgStarsPerRepo >= 10) score += 2.0;
+    else if (repoCount >= 2) score += 1.5;
+    else if (repoCount >= 1) score += 1.0;
+    
+    // Factor 3: Community engagement via forks (20% of GitHub score)
+    if (totalForks >= 1000) score += 2.0;
+    else if (totalForks >= 500) score += 1.5;
+    else if (totalForks >= 100) score += 1.0;
+    else if (totalForks >= 20) score += 0.5;
+    
+    // Factor 4: Flagship repository strength (10% of GitHub score)
+    if (maxStarsPerRepo >= 5000) score += 1.0;
+    else if (maxStarsPerRepo >= 1000) score += 0.8;
+    else if (maxStarsPerRepo >= 500) score += 0.6;
+    else if (maxStarsPerRepo >= 100) score += 0.4;
+    else if (maxStarsPerRepo >= 50) score += 0.2;
+    
+    return Math.min(Math.max(score, 1), 10);
   }
 
   /**
@@ -288,19 +343,89 @@ export class SpearfishScoringAlgorithm {
 
   /**
    * Evaluate HuggingFace activity score (Medium weight)
+   * Now uses real HuggingFace data including downloads, likes, and model engagement
    */
   private evaluateHuggingFaceActivity(company: CompanyData): number {
     if (!company.huggingface_models || company.huggingface_models.length === 0) {
       return 1; // Low default for no HuggingFace presence
     }
     
-    // This is a simplified implementation
-    // In a real system, you'd fetch actual HuggingFace download data
-    const modelCount = company.huggingface_models.length;
+    // Calculate metrics from real HuggingFace data
+    const models = company.huggingface_models as any[];
+    let totalDownloads = 0;
+    let totalLikes = 0;
+    let activeModels = 0;
+    let maxDownloadsPerModel = 0;
+    let maxLikesPerModel = 0;
+    const taskTypes = new Set<string>();
     
-    if (modelCount >= 5) return 10;
-    if (modelCount >= 2) return 7;
-    return 5;
+    models.forEach(model => {
+      const downloads = model.downloads || 0;
+      const likes = model.likes || 0;
+      const task = model.task;
+      
+      totalDownloads += downloads;
+      totalLikes += likes;
+      maxDownloadsPerModel = Math.max(maxDownloadsPerModel, downloads);
+      maxLikesPerModel = Math.max(maxLikesPerModel, likes);
+      
+      if (task) {
+        taskTypes.add(task);
+      }
+      
+      // Count as active if it has downloads or likes
+      if (downloads > 0 || likes > 0) {
+        activeModels++;
+      }
+    });
+    
+    const modelCount = models.length;
+    const avgDownloadsPerModel = modelCount > 0 ? totalDownloads / modelCount : 0;
+    const taskDiversity = taskTypes.size;
+    
+    // Scoring based on multiple factors
+    let score = 0;
+    
+    // Factor 1: Total download count (45% of HF score)
+    if (totalDownloads >= 1000000) score += 4.5;      // 1M+ downloads
+    else if (totalDownloads >= 500000) score += 4.0;  // 500K+ downloads
+    else if (totalDownloads >= 100000) score += 3.5;  // 100K+ downloads
+    else if (totalDownloads >= 50000) score += 3.0;   // 50K+ downloads
+    else if (totalDownloads >= 10000) score += 2.5;   // 10K+ downloads
+    else if (totalDownloads >= 5000) score += 2.0;    // 5K+ downloads
+    else if (totalDownloads >= 1000) score += 1.5;    // 1K+ downloads
+    else if (totalDownloads >= 100) score += 1.0;     // 100+ downloads
+    else if (totalDownloads > 0) score += 0.5;        // Some downloads
+    
+    // Factor 2: Community engagement via likes (25% of HF score)
+    if (totalLikes >= 500) score += 2.5;
+    else if (totalLikes >= 200) score += 2.0;
+    else if (totalLikes >= 100) score += 1.5;
+    else if (totalLikes >= 50) score += 1.0;
+    else if (totalLikes >= 20) score += 0.8;
+    else if (totalLikes >= 10) score += 0.6;
+    else if (totalLikes >= 5) score += 0.4;
+    else if (totalLikes > 0) score += 0.2;
+    
+    // Factor 3: Model portfolio and quality (20% of HF score)
+    if (modelCount >= 10 && avgDownloadsPerModel >= 1000) score += 2.0;
+    else if (modelCount >= 5 && avgDownloadsPerModel >= 500) score += 1.5;
+    else if (modelCount >= 3 && avgDownloadsPerModel >= 100) score += 1.0;
+    else if (modelCount >= 2) score += 0.8;
+    else if (modelCount >= 1) score += 0.5;
+    
+    // Factor 4: Flagship model strength (10% of HF score)
+    if (maxDownloadsPerModel >= 500000) score += 1.0;
+    else if (maxDownloadsPerModel >= 100000) score += 0.8;
+    else if (maxDownloadsPerModel >= 50000) score += 0.6;
+    else if (maxDownloadsPerModel >= 10000) score += 0.4;
+    else if (maxDownloadsPerModel >= 1000) score += 0.2;
+    
+    // Bonus: Task diversity (indicates versatility)
+    if (taskDiversity >= 3) score += 0.5;
+    else if (taskDiversity >= 2) score += 0.3;
+    
+    return Math.min(Math.max(score, 1), 10);
   }
 
   /**
@@ -403,12 +528,30 @@ export class SpearfishScoringAlgorithm {
 
     if (!company.github_repos || company.github_repos.length === 0) {
       missingDataPoints.push('github_repos');
-      approximations.push('Used minimal GitHub activity score');
+      approximations.push('Used minimal GitHub activity score (no repositories found)');
+    } else {
+      // Check if we have real GitHub data with metrics
+      const repos = company.github_repos as any[];
+      const hasMetrics = repos.some(repo => 
+        repo.stars_count !== undefined || repo.forks_count !== undefined
+      );
+      if (!hasMetrics) {
+        approximations.push('GitHub repos found but missing engagement metrics');
+      }
     }
 
     if (!company.huggingface_models || company.huggingface_models.length === 0) {
       missingDataPoints.push('huggingface_models');
-      approximations.push('Used minimal HuggingFace activity score');
+      approximations.push('Used minimal HuggingFace activity score (no models found)');
+    } else {
+      // Check if we have real HuggingFace data with metrics
+      const models = company.huggingface_models as any[];
+      const hasMetrics = models.some(model => 
+        model.downloads !== undefined || model.likes !== undefined
+      );
+      if (!hasMetrics) {
+        approximations.push('HuggingFace models found but missing engagement metrics');
+      }
     }
 
     if (criteria.fundingStage === 3) {

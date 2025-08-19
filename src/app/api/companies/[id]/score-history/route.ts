@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { spearfishDatabaseService } from '@/lib/spearfish-database-service';
+import { createSpearfishDatabaseService } from '@/lib/spearfish-database-service';
 
 export async function GET(
   request: NextRequest,
@@ -24,8 +24,12 @@ export async function GET(
     const fromDate = searchParams.get('fromDate') ? new Date(searchParams.get('fromDate')!) : undefined;
     const toDate = searchParams.get('toDate') ? new Date(searchParams.get('toDate')!) : undefined;
 
+    // Create database service with service role for score history access
+    // Using service role because score_history table has RLS restrictions
+    const databaseService = createSpearfishDatabaseService(true, true); // Use server client with service role
+    
     // Fetch score history from database
-    const scoreHistory = await spearfishDatabaseService.getCompanyScoreHistory(
+    const scoreHistory = await databaseService.getCompanyScoreHistory(
       companyId,
       {
         limit,

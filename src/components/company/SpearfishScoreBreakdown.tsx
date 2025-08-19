@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, ChevronRightIcon, InformationCircleIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 interface ScoreBreakdown {
   targetBatch: number;
@@ -220,6 +220,158 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
     return (score * weight) / 100;
   };
 
+  // Get raw data values for transparency
+  const getRawDataValues = (criterionKey: string) => {
+    switch (criterionKey) {
+      case 'targetBatch':
+        return {
+          label: 'Batch',
+          value: company?.batch || 'Unknown',
+          expected: 'W22, S22, or W23 for max score'
+        };
+      
+      case 'companyAge':
+        if (company?.launched_at) {
+          const launchDate = new Date(company.launched_at * 1000);
+          const monthsOld = Math.round((Date.now() - launchDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+          return {
+            label: 'Company Age',
+            value: `${monthsOld} months`,
+            expected: '18-24 months for max score'
+          };
+        }
+        return {
+          label: 'Company Age',
+          value: 'Unknown launch date',
+          expected: '18-24 months for max score'
+        };
+      
+      case 'githubActivity':
+        const repos = company?.github_repos || [];
+        const totalStars = repos.reduce((sum: number, repo: any) => sum + (repo.stars_count || 0), 0);
+        const totalForks = repos.reduce((sum: number, repo: any) => sum + (repo.forks_count || 0), 0);
+        return {
+          label: 'GitHub Activity',
+          value: `${totalStars} stars, ${totalForks} forks (${repos.length} repos)`,
+          expected: '10,000+ stars for max score'
+        };
+      
+      case 'huggingfaceActivity':
+        const models = company?.huggingface_models || [];
+        const totalDownloads = models.reduce((sum: number, model: any) => sum + (model.downloads || 0), 0);
+        const totalLikes = models.reduce((sum: number, model: any) => sum + (model.likes || 0), 0);
+        return {
+          label: 'HuggingFace Activity',
+          value: `${totalDownloads.toLocaleString()} downloads, ${totalLikes} likes (${models.length} models)`,
+          expected: '1M+ downloads for max score'
+        };
+      
+      case 'b2bFocus':
+        const b2bKeywords = ['b2b', 'business', 'enterprise', 'saas', 'api', 'platform', 'developer'];
+        const text = `${company?.one_liner || ''} ${company?.long_description || ''}`.toLowerCase();
+        const foundKeywords = b2bKeywords.filter(keyword => text.includes(keyword));
+        return {
+          label: 'B2B Focus',
+          value: foundKeywords.length > 0 ? `Found: ${foundKeywords.join(', ')}` : 'No B2B keywords found',
+          expected: 'B2B keywords in description'
+        };
+      
+      case 'hiringStatus':
+        return {
+          label: 'Hiring Status',
+          value: company?.is_hiring ? 'Currently hiring' : 'Not actively hiring',
+          expected: 'Active hiring for max score'
+        };
+      
+      case 'fundingStage':
+        if (company?.launched_at) {
+          const monthsOld = Math.round((Date.now() - new Date(company.launched_at * 1000).getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+          let stage = 'Too early';
+          if (monthsOld >= 18 && monthsOld <= 30) stage = 'Series A ready';
+          else if (monthsOld >= 12 && monthsOld <= 36) stage = 'Approaching Series A';
+          else if (monthsOld >= 6 && monthsOld <= 42) stage = 'Possible Series A';
+          else if (monthsOld > 42) stage = 'Past typical Series A';
+          
+          return {
+            label: 'Funding Stage',
+            value: `${stage} (${monthsOld} months old)`,
+            expected: '18-30 months for Series A readiness'
+          };
+        }
+        return {
+          label: 'Funding Stage',
+          value: 'Unknown (no launch date)',
+          expected: '18-30 months for Series A readiness'
+        };
+      
+      case 'nameQuality':
+        const boringPatterns = [
+          /^(AI|ML|Data|Tech|Cyber|Cloud|Digital|Smart|Auto|Micro|Nano|Meta|Super|Ultra|Hyper)/i,
+          /Corp$|Inc$|LLC$|Ltd$/i,
+          /\d{4}$/,
+          /^[A-Z]{2,4}$/,
+        ];
+        const isBoring = boringPatterns.some(pattern => pattern.test(company?.name || ''));
+        return {
+          label: 'Name Quality',
+          value: isBoring ? 'Generic/boring name pattern' : 'Unique, memorable name',
+          expected: 'Avoid generic tech prefixes/suffixes'
+        };
+      
+      case 'conferencePresence':
+        const text2 = `${company?.one_liner || ''} ${company?.long_description || ''}`.toLowerCase();
+        const conferenceKeywords = ['conference', 'summit', 'event', 'speaking', 'presenting', 'keynote'];
+        const foundConferenceKeywords = conferenceKeywords.filter(keyword => text2.includes(keyword));
+        return {
+          label: 'Conference Presence',
+          value: foundConferenceKeywords.length > 0 ? `Found: ${foundConferenceKeywords.join(', ')}` : 'No conference keywords found',
+          expected: 'Conference/speaking mentions'
+        };
+      
+      default:
+        return {
+          label: 'Unknown',
+          value: 'N/A',
+          expected: 'N/A'
+        };
+    }
+  };
+
+  // Get scoring methodology tooltip for each criterion
+  const getScoringTooltip = (criterionKey: string) => {
+    switch (criterionKey) {
+      case 'targetBatch':
+        return "Companies from W22, S22, W23 batches score 10/10. All other batches score 0/10. These batches align with optimal Series A investment timing.";
+      
+      case 'companyAge':
+        return "Perfect score (10/10) for 18-24 months old. Score decreases by 0.5 per month if younger than 18 months, or by 0.3 per month if older than 24 months.";
+      
+      case 'githubActivity':
+        return "Multi-factor scoring: Stars (40%), Repo Quality (30%), Forks (20%), Flagship Strength (10%). 10,000+ stars = max score. Indicates strong developer adoption.";
+      
+      case 'huggingfaceActivity':
+        return "Multi-factor scoring: Downloads (45%), Likes (25%), Portfolio (20%), Flagship (10%). 1M+ downloads = max score. Shows AI/ML product traction.";
+      
+      case 'b2bFocus':
+        return "Scans company description for B2B keywords: 'b2b', 'enterprise', 'saas', 'api', 'platform', 'developer'. Each keyword adds ~2 points.";
+      
+      case 'fundingStage':
+        return "Based on company age as proxy for Series A readiness. 18-30 months = 10/10 (optimal timing). 12-36 months = 7/10. Outside range scores lower.";
+      
+      case 'hiringStatus':
+        return "Simple binary: Currently hiring = 8/10, Not hiring = 4/10. Active hiring indicates growth confidence.";
+      
+      case 'nameQuality':
+        return "Inverse of 'boring' names. Generic tech prefixes (AI-, ML-, Tech-) or suffixes (Corp, Inc) score 3/10. Unique names score 8/10.";
+      
+      case 'conferencePresence':
+        return "Scans description for conference keywords: 'conference', 'summit', 'speaking', 'presenting'. Found keywords = 8/10, none = 2/10.";
+      
+      default:
+        return "Scoring methodology information not available.";
+    }
+  };
+
   // Group criteria by category
   const criteriaByCategory = Object.entries(CRITERIA_INFO).reduce((acc, [key, info]) => {
     if (!acc[info.category]) acc[info.category] = [];
@@ -230,6 +382,27 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
     });
     return acc;
   }, {} as Record<string, any[]>);
+
+  // Simple tooltip component
+  const Tooltip = ({ children, content }: { children: React.ReactNode; content: string }) => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    return (
+      <div 
+        className="relative inline-block"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+        {isVisible && (
+          <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 text-xs text-white bg-slate-900 border border-slate-600 rounded-lg shadow-lg max-w-xs">
+            {content}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-900"></div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const ScoreBar = ({ score, maxScore = 10 }: { score: number; maxScore?: number }) => {
     const percentage = (score / maxScore) * 100;
@@ -334,7 +507,7 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
             Confidence: <span className="text-white">{(confidence * 100).toFixed(0)}%</span>
           </div>
           <div className="text-slate-400">
-            Algorithm Version: <span className="text-white">1.0</span>
+            Algorithm Version: <span className="text-white">{latestScore?.algorithm_version || '2.0'}</span>
           </div>
         </div>
 
@@ -403,8 +576,16 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
                       <ChevronRightIcon className="h-4 w-4 text-slate-400" />
                     )}
                     <div>
-                      <div className="font-medium text-white">{criterion.title}</div>
+                      <div className="flex items-center space-x-2">
+                        <div className="font-medium text-white">{criterion.title}</div>
+                        <Tooltip content={getScoringTooltip(criterion.key)}>
+                          <QuestionMarkCircleIcon className="h-4 w-4 text-slate-400 hover:text-slate-300 cursor-help" />
+                        </Tooltip>
+                      </div>
                       <div className="text-sm text-slate-400">{criterion.description}</div>
+                      <div className="text-xs text-slate-500 mt-1 font-mono">
+                        {getRawDataValues(criterion.key).value}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -422,9 +603,25 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
                     <div className="text-sm text-slate-300">
                       <div className="font-medium mb-2">Explanation:</div>
                       <p>{criterion.explanation}</p>
+                      
+                      {/* Raw Data Values */}
+                      <div className="mt-3 p-3 bg-slate-800/40 rounded-lg border border-slate-600/30">
+                        <div className="font-medium text-slate-200 mb-2">📊 Actual Data Used:</div>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">{getRawDataValues(criterion.key).label}:</span>
+                            <span className="text-white font-mono">{getRawDataValues(criterion.key).value}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">For Max Score:</span>
+                            <span className="text-green-400">{getRawDataValues(criterion.key).expected}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
                       <div className="mt-3 grid grid-cols-2 gap-4 text-xs">
                         <div>
-                          <span className="text-slate-400">Raw Score:</span>
+                          <span className="text-slate-400">Calculated Score:</span>
                           <span className="text-white ml-2">{criterion.score.toFixed(2)} / 10</span>
                         </div>
                         <div>
@@ -441,28 +638,6 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
         </div>
       ))}
 
-      {/* Score History */}
-      {scoreHistory.length > 1 && (
-        <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
-          <h4 className="text-lg font-medium text-white mb-4">Score History</h4>
-          <div className="space-y-3">
-            {scoreHistory.slice(0, 5).map((score, index) => (
-              <div key={score.id} className="flex items-center justify-between p-3 bg-slate-900/30 rounded-lg">
-                <div>
-                  <div className="text-white font-medium">{score.spearfish_score.toFixed(1)}</div>
-                  <div className="text-xs text-slate-400">
-                    {new Date(score.calculated_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-slate-300">{(score.confidence * 100).toFixed(0)}% confidence</div>
-                  {index === 0 && <div className="text-xs text-green-400">Current</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

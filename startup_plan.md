@@ -499,3 +499,8 @@ CACHE_TTL_SECONDS=300
 **Highest Risk**: Uncontrolled API costs without proper guards, caching, or fallbacks.
 
 The Spearfish AI codebase is fundamentally sound with modern architecture and working core features. Focus on adding revenue capabilities, controlling costs, and improving stability rather than rebuilding from scratch. Ship fast, iterate based on user feedback, and optimize for profitability within 90 days.
+
+Build Hugging Face model discovery service
+     ☐ Create dedicated HF models table and API
+     ☐ Enhance founder data collection (LinkedIn, Twitter, bios)
+     ☐ Add funding information collection

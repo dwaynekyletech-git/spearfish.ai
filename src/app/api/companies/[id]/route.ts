@@ -170,7 +170,7 @@ export async function GET(
         founders: [], // Will be populated from YC API
         location: parseJsonArray(company.regions)[0] || 'Unknown',
         website: company.website_url,
-        company_size: getCompanySizeRange(company.team_size),
+        company_size: getCompanySizeRange(company.team_size || undefined),
         stage: company.status || 'Unknown',
         industry: company.industry,
         subindustry: company.subindustry,

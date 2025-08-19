@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔄 Starting daily score recalculation job...');
     
-    const databaseService = createSpearfishDatabaseService(true);
+    const databaseService = createSpearfishDatabaseService(true, true); // Use server client with service role
     
     // Get companies that need recalculation (older than 24 hours)
     const companiesNeedingRecalculation = await databaseService.getCompaniesNeedingRecalculation({
@@ -146,18 +146,22 @@ export async function POST(request: NextRequest) {
     const { 
       batchSize = 50, 
       targetBatches = ['W22', 'S22', 'W23'],
-      maxAge = 24 
+      maxAge = 24,
+      forceAll = false,
+      algorithmVersion = null
     } = body;
 
     console.log('🔄 Starting manual score recalculation job...');
     
-    const databaseService = createSpearfishDatabaseService(true);
+    const databaseService = createSpearfishDatabaseService(true, true); // Use server client with service role
     
     // Get companies that need recalculation
     const companiesNeedingRecalculation = await databaseService.getCompaniesNeedingRecalculation({
-      olderThan: new Date(Date.now() - maxAge * 60 * 60 * 1000),
+      olderThan: forceAll ? undefined : new Date(Date.now() - maxAge * 60 * 60 * 1000),
       batchSize,
       batches: targetBatches,
+      forceAll,
+      algorithmVersion,
     });
 
     if (companiesNeedingRecalculation.length === 0) {

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { spearfishScoringService } from '@/lib/spearfish-scoring-service';
-import { spearfishDatabaseService } from '@/lib/spearfish-database-service';
-// We'll use spearfishDatabaseService instead of databaseService for consistency
+import { createSpearfishDatabaseService } from '@/lib/spearfish-database-service';
 
 export async function POST(
   request: NextRequest,
@@ -24,8 +23,11 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { forceRecalculate = false } = body;
 
+    // Use service role for proper database access
+    const databaseService = createSpearfishDatabaseService(true, true);
+    
     // Get company data from database
-    const companies = await spearfishDatabaseService.getCompaniesWithScores({
+    const companies = await databaseService.getCompaniesWithScores({
       limit: 1000, // Get more companies to find the specific one
       offset: 0
     });
@@ -55,7 +57,7 @@ export async function POST(
     const scoringResult = spearfishScoringService.calculateScore(company);
     
     // Update company score in database
-    const updateSuccess = await spearfishDatabaseService.updateCompanyScore(
+    const updateSuccess = await databaseService.updateCompanyScore(
       companyId,
       scoringResult
     );
@@ -63,6 +65,25 @@ export async function POST(
     if (!updateSuccess) {
       throw new Error('Failed to update company score in database');
     }
+
+    // Extract raw data metrics for transparency
+    const rawDataSummary = {
+      batch: company.batch,
+      launchedAt: company.launched_at ? new Date(company.launched_at * 1000).toISOString() : null,
+      isHiring: company.is_hiring,
+      githubRepos: {
+        count: (company.github_repos || []).length,
+        totalStars: (company.github_repos || []).reduce((sum: number, repo: any) => sum + (repo.stars_count || 0), 0),
+        totalForks: (company.github_repos || []).reduce((sum: number, repo: any) => sum + (repo.forks_count || 0), 0),
+      },
+      huggingfaceModels: {
+        count: (company.huggingface_models || []).length,
+        totalDownloads: (company.huggingface_models || []).reduce((sum: number, model: any) => sum + (model.downloads || 0), 0),
+        totalLikes: (company.huggingface_models || []).reduce((sum: number, model: any) => sum + (model.likes || 0), 0),
+      },
+      oneLiner: company.one_liner,
+      tags: company.tags
+    };
 
     return NextResponse.json({
       success: true,
@@ -74,7 +95,8 @@ export async function POST(
         confidence: scoringResult.confidence,
         algorithmVersion: scoringResult.algorithmVersion,
         calculatedAt: scoringResult.calculatedAt,
-        metadata: scoringResult.metadata
+        metadata: scoringResult.metadata,
+        rawDataSummary
       },
       metadata: {
         timestamp: new Date().toISOString(),
