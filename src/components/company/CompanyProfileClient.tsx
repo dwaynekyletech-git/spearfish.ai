@@ -37,6 +37,8 @@ interface ApiResponse {
 export function CompanyProfileClient({ companyId }: CompanyProfileClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [initialData, setInitialData] = useState<any>(null);
+  const [hasBeenLoading, setHasBeenLoading] = useState(false);
+  const [showNotFound, setShowNotFound] = useState(false);
 
   // Try to get initial data from sessionStorage (set by CompanyCard navigation)
   useEffect(() => {
@@ -59,6 +61,21 @@ export function CompanyProfileClient({ companyId }: CompanyProfileClientProps) {
   const { data: company, isLoading, error, isStale, refetch } = useCompanyData(companyId, { 
     initialData 
   });
+
+  // Handle loading timeout logic
+  useEffect(() => {
+    if (isLoading) {
+      setHasBeenLoading(true);
+      setShowNotFound(false);
+    } else if (hasBeenLoading && !company && !error) {
+      // Add a minimum delay before showing "not found" to ensure proper loading experience
+      const timer = setTimeout(() => {
+        setShowNotFound(true);
+      }, 1500); // 1.5 second delay after loading completes
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, company, error, hasBeenLoading]);
   
   // Generate breadcrumb items - must be called before early returns
   const breadcrumbItems = useCompanyBreadcrumbs(company, activeTab);
@@ -169,8 +186,25 @@ export function CompanyProfileClient({ companyId }: CompanyProfileClientProps) {
     );
   }
 
-  // Company not found (only show after loading completes)
-  if (!isLoading && !company) {
+  // Show loading state if we're still waiting for timeout after initial load
+  if (!isLoading && !company && !error && hasBeenLoading && !showNotFound) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-8 h-8 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h3 className="text-xl font-semibold text-white mb-2">Loading Company...</h3>
+          <p className="text-slate-400 text-sm">
+            Please wait while we fetch company information.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Company not found (only show after loading completes and timeout)
+  if (!isLoading && !company && !error && showNotFound) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-12">

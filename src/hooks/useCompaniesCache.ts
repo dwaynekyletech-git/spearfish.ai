@@ -277,7 +277,7 @@ export function useCompaniesCache(params: CompaniesParams): UseCompaniesCacheRes
         setIsLoading(false);
       }
     }
-  }, [baseCacheKey, params, fetchCompaniesData]);
+  }, [baseCacheKey, params, fetchCompaniesData, data.length]);
 
   /**
    * Load more data for pagination
@@ -320,7 +320,7 @@ export function useCompaniesCache(params: CompaniesParams): UseCompaniesCacheRes
         setIsLoadingMore(false);
       }
     }
-  }, [hasMore, isLoadingMore, isLoading, currentOffset, params, fetchCompaniesData]);
+  }, [hasMore, isLoadingMore, isLoading, currentOffset, params, fetchCompaniesData, data]);
 
   /**
    * Refetch data (force refresh)

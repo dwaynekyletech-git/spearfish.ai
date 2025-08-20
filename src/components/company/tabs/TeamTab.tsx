@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface FounderProfile {
   id: string;
@@ -648,9 +649,11 @@ export function TeamTab({ company }: TeamTabProps) {
                       {/* Enhanced Avatar */}
                       <div className="flex-shrink-0">
                         {founder.image_url ? (
-                          <img
+                          <Image
                             src={founder.image_url}
                             alt={founder.name}
+                            width={56}
+                            height={56}
                             className="w-14 h-14 rounded-full object-cover border-2 border-slate-600/50"
                             onError={(e) => {
                               // Fallback to initials if image fails to load

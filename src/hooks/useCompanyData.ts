@@ -170,7 +170,7 @@ export function useCompanyData(companyId: string, options: UseCompanyDataOptions
         abortControllerRef.current.abort();
       }
     };
-  }, [companyId, fetchCompanyData]);
+  }, [companyId, fetchCompanyData, initialData]);
 
   useEffect(() => {
     return () => {

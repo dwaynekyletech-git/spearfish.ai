@@ -350,13 +350,19 @@ export class YCOSSImportService {
       try {
         // Convert YC OSS company to format expected by detector
         const companyForDetection = {
+          id: crypto.randomUUID(), // Generate temporary UUID for detection
           name: company.name,
           one_liner: company.one_liner || '',
           long_description: company.long_description || '',
           industry: company.industry || '',
           tags: company.tags || [],
           batch: company.batch || '',
-          team_size: company.team_size || 0
+          team_size: company.team_size || 0,
+          status: 'Active' as const,
+          regions: [],
+          is_hiring: false,
+          github_repos: [],
+          huggingface_models: []
         };
 
         const detection = AICompanyDetector.detectAICompany(companyForDetection);
@@ -564,4 +570,4 @@ export function createYCOSSImportService(): YCOSSImportService {
 // Export Types
 // =============================================================================
 
-export type { YCOSSCompany, YCOSSImportResult, YCOSSImportOptions };
+// All types are already exported above where they are defined
