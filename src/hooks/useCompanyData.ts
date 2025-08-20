@@ -22,14 +22,19 @@ interface CompanyDataState {
   refetch: () => Promise<void>;
 }
 
+interface UseCompanyDataOptions {
+  initialData?: any; // Initial data to show immediately
+}
+
 // Simple in-memory cache
 const cache = new Map<string, CacheEntry>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 
-export function useCompanyData(companyId: string): CompanyDataState {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function useCompanyData(companyId: string, options: UseCompanyDataOptions = {}): CompanyDataState {
+  const { initialData } = options;
+  const [data, setData] = useState<any>(initialData || null);
+  const [isLoading, setIsLoading] = useState(!initialData); // Don't show loading if we have initial data
   const [error, setError] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   const isMountedRef = useRef(true);
@@ -42,7 +47,9 @@ export function useCompanyData(companyId: string): CompanyDataState {
 
     // Check if we have fresh cached data
     if (useCache && cachedEntry && (now - cachedEntry.timestamp) < CACHE_DURATION) {
-      setData(cachedEntry.data);
+      // Extract the actual company data from API response structure
+      const companyData = cachedEntry.data?.data || cachedEntry.data;
+      setData(companyData);
       setIsLoading(false);
       setError(null);
       
@@ -65,8 +72,8 @@ export function useCompanyData(companyId: string): CompanyDataState {
 
       abortControllerRef.current = new AbortController();
 
-      // Set loading state only if we don't have cached data
-      if (!cachedEntry) {
+      // Set loading state only if we don't have cached data or initial data
+      if (!cachedEntry && !data) {
         setIsLoading(true);
       }
       setError(null);
@@ -118,6 +125,7 @@ export function useCompanyData(companyId: string): CompanyDataState {
         setData(newData);
         setIsStale(false);
         setError(null);
+        setIsLoading(false);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -129,8 +137,8 @@ export function useCompanyData(companyId: string): CompanyDataState {
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : 'Failed to fetch company');
         
-        // If we have cached data, don't clear it on error
-        if (!cachedEntry) {
+        // If we have cached data or initial data, don't clear it on error
+        if (!cachedEntry && !initialData) {
           setData(null);
         }
       }
@@ -139,7 +147,7 @@ export function useCompanyData(companyId: string): CompanyDataState {
         setIsLoading(false);
       }
     }
-  }, [companyId]);
+  }, [companyId, data, initialData]);
 
   const refetch = async (): Promise<void> => {
     setIsStale(false);
@@ -148,6 +156,12 @@ export function useCompanyData(companyId: string): CompanyDataState {
 
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // If we have initial data, mark it as potentially stale and fetch fresh data in background
+    if (initialData) {
+      setIsStale(true);
+    }
+    
     fetchCompanyData();
 
     return () => {

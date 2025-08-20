@@ -39,8 +39,9 @@ function isAIApiRoute(req: Request): boolean {
   return aiRoutePatterns.some(pattern => pattern.test(pathname));
 }
 
-// Initialize rate limiter (only if Redis is available)
+// Initialize rate limiters (only if Redis is available)
 let ratelimit: Ratelimit | null = null;
+let companyDataRateLimit: Ratelimit | null = null;
 let redis: Redis | null = null;
 
 if (process.env.UPSTASH_REDIS_URL && process.env.UPSTASH_REDIS_TOKEN) {
@@ -49,6 +50,7 @@ if (process.env.UPSTASH_REDIS_URL && process.env.UPSTASH_REDIS_TOKEN) {
     token: process.env.UPSTASH_REDIS_TOKEN,
   });
 
+  // Default rate limiter for most endpoints
   ratelimit = new Ratelimit({
     redis,
     limiter: Ratelimit.slidingWindow(
@@ -56,6 +58,17 @@ if (process.env.UPSTASH_REDIS_URL && process.env.UPSTASH_REDIS_TOKEN) {
       '1 m'
     ),
     analytics: true,
+  });
+
+  // More generous rate limiter for company-data endpoint (cached responses)
+  companyDataRateLimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(
+      parseInt(process.env.COMPANY_DATA_RATE_LIMIT || '200'), // 200 requests per minute
+      '1 m'
+    ),
+    analytics: true,
+    prefix: 'company-data-rl',
   });
 }
 
@@ -88,38 +101,61 @@ export default clerkMiddleware(async (auth, req) => {
   if (pathname.startsWith('/api/')) {
     
     // 1. Rate Limiting (if enabled)
-    if (ratelimit && !pathname.startsWith('/api/health')) {
+    if (!pathname.startsWith('/api/health')) {
       try {
         const identifier = ip;
-        const { success, limit, reset, remaining } = await ratelimit.limit(identifier);
+        let rateLimiter: Ratelimit | null = null;
         
-        if (!success) {
-          console.warn(`Rate limit exceeded for ${identifier} on ${pathname}`);
-          return NextResponse.json(
-            { 
-              error: 'Rate limit exceeded',
-              limit,
-              reset: new Date(reset),
-              remaining,
-              retryAfter: Math.round((reset - Date.now()) / 1000)
-            },
-            { 
-              status: 429,
-              headers: {
-                'X-RateLimit-Limit': limit.toString(),
-                'X-RateLimit-Remaining': remaining.toString(),
-                'X-RateLimit-Reset': reset.toString(),
-                'Retry-After': Math.round((reset - Date.now()) / 1000).toString(),
-              }
+        // Skip rate limiting in development for localhost
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        const isLocalhost = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.0.0.1');
+        
+        if (isDevelopment && isLocalhost) {
+          // Skip rate limiting for local development
+          // Continue to next middleware steps
+        } else {
+          // Use specific rate limiter for company-data endpoint
+          if (pathname === '/api/company-data') {
+            rateLimiter = companyDataRateLimit;
+          } else {
+            rateLimiter = ratelimit;
+          }
+          
+          if (rateLimiter) {
+            const { success, limit, reset, remaining } = await rateLimiter.limit(identifier);
+            
+            if (!success) {
+              console.warn(`Rate limit exceeded for ${identifier} on ${pathname} (limit: ${limit})`);
+              return NextResponse.json(
+                { 
+                  error: 'Rate limit exceeded',
+                  limit,
+                  reset: new Date(reset),
+                  remaining,
+                  retryAfter: Math.round((reset - Date.now()) / 1000),
+                  endpoint: pathname
+                },
+                { 
+                  status: 429,
+                  headers: {
+                    'X-RateLimit-Limit': limit.toString(),
+                    'X-RateLimit-Remaining': remaining.toString(),
+                    'X-RateLimit-Reset': reset.toString(),
+                    'Retry-After': Math.round((reset - Date.now()) / 1000).toString(),
+                    'X-RateLimit-Endpoint': pathname,
+                  }
+                }
+              );
             }
-          );
+            
+            // Add rate limit headers to successful requests
+            const response = NextResponse.next();
+            response.headers.set('X-RateLimit-Limit', limit.toString());
+            response.headers.set('X-RateLimit-Remaining', remaining.toString());
+            response.headers.set('X-RateLimit-Reset', reset.toString());
+            response.headers.set('X-RateLimit-Endpoint', pathname);
+          }
         }
-        
-        // Add rate limit headers to successful requests
-        const response = NextResponse.next();
-        response.headers.set('X-RateLimit-Limit', limit.toString());
-        response.headers.set('X-RateLimit-Remaining', remaining.toString());
-        response.headers.set('X-RateLimit-Reset', reset.toString());
       } catch (error) {
         console.error('Rate limiting error:', error);
         // Continue without rate limiting if there's an error

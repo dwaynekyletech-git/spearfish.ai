@@ -4,11 +4,63 @@
  * Job opportunities and "Why Spearfish This Company" section
  */
 
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface Job {
+  id: string;
+  title: string;
+  description?: string | null;
+  location?: string | null;
+  apply_url?: string | null;
+  salary?: string | null;
+  years_experience?: string | null;
+  job_type?: string | null;
+  experience_level?: string | null;
+  department?: string | null;
+  remote_ok: boolean;
+  posted_at?: string | null;
+  created_at: string;
+}
+
 interface OpportunitiesTabProps {
   company: any;
 }
 
 export function OpportunitiesTab({ company }: OpportunitiesTabProps) {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobsError, setJobsError] = useState<string | null>(null);
+
+  // Fetch jobs when component mounts
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!company?.id) return;
+
+      try {
+        setJobsLoading(true);
+        setJobsError(null);
+        
+        const response = await fetch(`/api/companies/${company.id}/jobs`);
+        const data = await response.json();
+
+        if (data.success) {
+          setJobs(data.data || []);
+        } else {
+          setJobsError(data.error || 'Failed to fetch jobs');
+        }
+      } catch (error) {
+        setJobsError('Failed to load job listings');
+        console.error('Error fetching jobs:', error);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [company?.id]);
+
   // Generate spearfish reasons based on actual company data
   const getSpearfishReasons = () => {
     const reasons = [];
@@ -232,6 +284,119 @@ export function OpportunitiesTab({ company }: OpportunitiesTabProps) {
             </p>
             <div className="text-slate-400 text-sm">
               <p><strong>Stay connected:</strong> Follow their progress and be ready when opportunities arise.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Open Positions */}
+      <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-white">Open Positions</h3>
+          {jobs.length > 0 && (
+            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full">
+              {jobs.length} {jobs.length === 1 ? 'position' : 'positions'}
+            </span>
+          )}
+        </div>
+
+        {jobsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+            <span className="ml-3 text-slate-400">Loading positions...</span>
+          </div>
+        ) : jobsError ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h4 className="text-lg font-medium text-white mb-2">Error Loading Positions</h4>
+            <p className="text-slate-400 text-sm">{jobsError}</p>
+          </div>
+        ) : jobs.length > 0 ? (
+          <div className="space-y-4">
+            {jobs.map((job) => (
+              <div key={job.id} className="bg-slate-900/50 rounded-lg p-4 hover:bg-slate-700/30 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="text-white font-medium text-lg mb-1">{job.title}</h4>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+                      {job.location && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {job.location}
+                        </span>
+                      )}
+                      {job.remote_ok && (
+                        <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full">
+                          Remote OK
+                        </span>
+                      )}
+                      {job.salary && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                          </svg>
+                          {job.salary}
+                        </span>
+                      )}
+                      {job.years_experience && (
+                        <span className="flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6.5" />
+                          </svg>
+                          {job.years_experience}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {job.apply_url && (
+                    <a
+                      href={job.apply_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      View Details
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+                
+                {job.description && (
+                  <div className="mt-3 pt-3 border-t border-slate-700">
+                    <p className="text-slate-300 text-sm line-clamp-3">
+                      {job.description.substring(0, 200)}{job.description.length > 200 ? '...' : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="text-slate-400 text-sm p-3 bg-slate-900/30 rounded-lg">
+              <p><strong>Spearfishing tip:</strong> Study the job requirements carefully and create a targeted project or demo that addresses their specific needs before applying.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6.5" />
+              </svg>
+            </div>
+            <h4 className="text-lg font-medium text-white mb-2">No Open Positions</h4>
+            <p className="text-slate-400 max-w-md mx-auto mb-4">
+              There are no current job listings for this company. Check back later or reach out directly to express interest.
+            </p>
+            <div className="text-slate-400 text-sm">
+              <p><strong>Pro tip:</strong> Sometimes the best opportunities aren&apos;t posted publicly. Consider reaching out with a compelling project proposal.</p>
             </div>
           </div>
         )}

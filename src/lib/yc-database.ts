@@ -6,7 +6,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { YCCompany, ValidatedCompany } from './company-data-service';
+import { CompanyData } from './spearfish-scoring-service';
 
 // =============================================================================
 // Type Definitions
@@ -130,47 +130,61 @@ export class YCDatabaseService {
   // =============================================================================
 
   /**
-   * Upsert a company from YC API data
+   * Upsert a company from YC API data using direct database operations
    */
-  async upsertCompany(company: YCCompany | ValidatedCompany): Promise<string> {
+  async upsertCompany(company: CompanyData | any): Promise<string> {
     try {
-      const { data, error } = await this.adminSupabase.rpc('upsert_yc_company', {
-        p_yc_api_id: company.id,
-        p_name: company.name,
-        p_slug: company.slug,
-        p_former_names: JSON.stringify(company.former_names || []),
-        p_website_url: company.website || null,
-        p_all_locations: company.all_locations || null,
-        p_one_liner: company.one_liner || null,
-        p_long_description: company.long_description || null,
-        p_batch: company.batch,
-        p_stage: company.stage || null,
-        p_status: company.status,
-        p_industry: company.industry || null,
-        p_subindustry: company.subindustry || null,
-        p_industries: JSON.stringify(company.industries || []),
-        p_tags: JSON.stringify(company.tags || []),
-        p_tags_highlighted: JSON.stringify(company.tags_highlighted || []),
-        p_regions: JSON.stringify(company.regions || []),
-        p_team_size: company.team_size || null,
-        p_launched_at: company.launched_at || null,
-        p_small_logo_thumb_url: company.small_logo_thumb_url || null,
-        p_is_hiring: company.isHiring || false,
-        p_nonprofit: company.nonprofit || false,
-        p_top_company: company.top_company || false,
-        p_app_video_public: company.app_video_public || false,
-        p_demo_day_video_public: company.demo_day_video_public || false,
-        p_yc_url: company.url || null,
-        p_yc_api_url: company.api || null,
-        p_is_ai_related: 'isAIRelated' in company ? company.isAIRelated : false,
-        p_ai_confidence_score: 'aiConfidence' in company ? company.aiConfidence : null
-      });
+      // Prepare company data for database
+      const companyData = {
+        yc_api_id: company.id,
+        name: company.name,
+        slug: company.slug,
+        former_names: company.former_names || [],
+        website_url: company.website || null,
+        all_locations: company.all_locations || null,
+        one_liner: company.one_liner || null,
+        long_description: company.long_description || null,
+        batch: company.batch,
+        stage: company.stage || null,
+        status: company.status,
+        industry: company.industry || null,
+        subindustry: company.subindustry || null,
+        industries: company.industries || [],
+        tags: company.tags || [],
+        tags_highlighted: company.tags_highlighted || [],
+        regions: company.regions || [],
+        team_size: company.team_size || null,
+        launched_at: company.launched_at || null,
+        small_logo_thumb_url: company.small_logo_thumb_url || null,
+        is_hiring: company.isHiring || false,
+        nonprofit: company.nonprofit || false,
+        top_company: company.top_company || false,
+        app_video_public: company.app_video_public || false,
+        demo_day_video_public: company.demo_day_video_public || false,
+        yc_url: company.url || null,
+        yc_api_url: company.api || null,
+        is_ai_related: 'isAIRelated' in company ? company.isAIRelated : false,
+        ai_confidence_score: 'aiConfidence' in company ? company.aiConfidence : null,
+        ai_classification_date: 'isAIRelated' in company ? new Date().toISOString() : null,
+        sync_status: 'synced',
+        last_sync_date: new Date().toISOString()
+      };
+
+      // Use upsert with conflict resolution on yc_api_id
+      const { data, error } = await this.adminSupabase
+        .from('companies')
+        .upsert([companyData], {
+          onConflict: 'yc_api_id',
+          ignoreDuplicates: false
+        })
+        .select('id')
+        .single();
 
       if (error) {
         throw new Error(`Failed to upsert company: ${error.message}`);
       }
 
-      return data as string;
+      return data.id as string;
     } catch (error) {
       console.error('Error upserting company:', error);
       throw error;
@@ -180,7 +194,7 @@ export class YCDatabaseService {
   /**
    * Bulk upsert multiple companies
    */
-  async upsertCompanies(companies: (YCCompany | ValidatedCompany)[]): Promise<{
+  async upsertCompanies(companies: (CompanyData | any)[]): Promise<{
     successful: string[];
     failed: { company: any; error: string }[];
   }> {
@@ -546,6 +560,165 @@ export class YCDatabaseService {
   }
 
   // =============================================================================
+  // Data Clearing Operations
+  // =============================================================================
+
+  /**
+   * Clear all companies and related data
+   * WARNING: This will delete ALL companies, founders, funding data, etc.
+   */
+  async clearAllCompanies(): Promise<{
+    companiesDeleted: number;
+    foundersDeleted: number;
+    fundingDeleted: number;
+  }> {
+    try {
+      // Get counts before deletion for reporting
+      const [companiesCount, foundersCount, fundingCount] = await Promise.all([
+        this.adminSupabase.from('companies').select('*', { count: 'exact', head: true }),
+        this.adminSupabase.from('founders').select('*', { count: 'exact', head: true }),
+        this.adminSupabase.from('company_funding_summary').select('*', { count: 'exact', head: true })
+      ]);
+
+      const beforeCounts = {
+        companies: companiesCount.count || 0,
+        founders: foundersCount.count || 0,
+        funding: fundingCount.count || 0
+      };
+
+      // Delete in proper order (child tables first)
+      await this.adminSupabase.from('founders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('company_funding_summary').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('github_repositories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('github_repository_metrics').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('score_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('research_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await this.adminSupabase.from('companies').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      return {
+        companiesDeleted: beforeCounts.companies,
+        foundersDeleted: beforeCounts.founders,
+        fundingDeleted: beforeCounts.funding
+      };
+    } catch (error) {
+      console.error('Error clearing all companies:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear companies by specific batches
+   */
+  async clearCompaniesByBatches(batches: string[]): Promise<{
+    companiesDeleted: number;
+    foundersDeleted: number;
+  }> {
+    try {
+      // Get company IDs for the specified batches
+      const { data: companiesToDelete, error: selectError } = await this.adminSupabase
+        .from('companies')
+        .select('id')
+        .in('batch', batches);
+
+      if (selectError) {
+        throw new Error(`Failed to get companies for deletion: ${selectError.message}`);
+      }
+
+      if (!companiesToDelete || companiesToDelete.length === 0) {
+        return { companiesDeleted: 0, foundersDeleted: 0 };
+      }
+
+      const companyIds = companiesToDelete.map(c => c.id);
+
+      // Count related records before deletion
+      const [foundersCount] = await Promise.all([
+        this.adminSupabase.from('founders').select('*', { count: 'exact', head: true }).in('company_id', companyIds)
+      ]);
+
+      // Delete related data first
+      await this.adminSupabase.from('founders').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('company_funding_summary').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('github_repositories').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('score_history').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('research_sessions').delete().in('company_id', companyIds);
+
+      // Finally delete companies
+      const { error: deleteError } = await this.adminSupabase
+        .from('companies')
+        .delete()
+        .in('batch', batches);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete companies: ${deleteError.message}`);
+      }
+
+      return {
+        companiesDeleted: companiesToDelete.length,
+        foundersDeleted: foundersCount.count || 0
+      };
+    } catch (error) {
+      console.error('Error clearing companies by batches:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear companies by data source (e.g., 'apify', 'manual_json')
+   */
+  async clearCompaniesBySource(dataSource: string): Promise<{
+    companiesDeleted: number;
+    foundersDeleted: number;
+  }> {
+    try {
+      // Get company IDs for the specified data source
+      const { data: companiesToDelete, error: selectError } = await this.adminSupabase
+        .from('companies')
+        .select('id')
+        .eq('sync_status', dataSource);
+
+      if (selectError) {
+        throw new Error(`Failed to get companies for deletion: ${selectError.message}`);
+      }
+
+      if (!companiesToDelete || companiesToDelete.length === 0) {
+        return { companiesDeleted: 0, foundersDeleted: 0 };
+      }
+
+      const companyIds = companiesToDelete.map(c => c.id);
+
+      // Count related records before deletion
+      const [foundersCount] = await Promise.all([
+        this.adminSupabase.from('founders').select('*', { count: 'exact', head: true }).in('company_id', companyIds)
+      ]);
+
+      // Delete related data first
+      await this.adminSupabase.from('founders').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('company_funding_summary').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('github_repositories').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('score_history').delete().in('company_id', companyIds);
+      await this.adminSupabase.from('research_sessions').delete().in('company_id', companyIds);
+
+      // Finally delete companies
+      const { error: deleteError } = await this.adminSupabase
+        .from('companies')
+        .delete()
+        .eq('sync_status', dataSource);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete companies: ${deleteError.message}`);
+      }
+
+      return {
+        companiesDeleted: companiesToDelete.length,
+        foundersDeleted: foundersCount.count || 0
+      };
+    } catch (error) {
+      console.error('Error clearing companies by source:', error);
+      throw error;
+    }
+  }
+
+  // =============================================================================
   // Health and Maintenance
   // =============================================================================
 
@@ -615,7 +788,7 @@ export function createYCDatabaseService(): YCDatabaseService {
 /**
  * Convert YC API company to database format
  */
-export function convertYCCompanyToDatabase(company: YCCompany): Partial<DatabaseCompany> {
+export function convertYCCompanyToDatabase(company: CompanyData | any): Partial<DatabaseCompany> {
   return {
     yc_api_id: company.id,
     name: company.name,

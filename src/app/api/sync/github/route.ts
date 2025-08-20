@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { dataSyncService } from '@/lib/data-sync-service';
+import { createServiceClient } from '@/lib/supabase-server';
 import { logInfo, logError } from '@/lib/logger';
 
 // =============================================================================
@@ -135,7 +136,8 @@ async function getLastSyncTime(): Promise<number | null> {
   try {
     // In a production app, you'd store this in Redis or database
     // For now, we'll check the updated_at timestamp of companies with github_repos
-    const { data } = await dataSyncService.supabase
+    const supabase = createServiceClient();
+    const { data } = await supabase
       .from('companies')
       .select('updated_at')
       .not('github_repos', 'eq', JSON.stringify([]))

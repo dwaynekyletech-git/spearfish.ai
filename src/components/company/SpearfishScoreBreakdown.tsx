@@ -507,7 +507,7 @@ export function SpearfishScoreBreakdown({ company }: SpearfishScoreBreakdownProp
             Confidence: <span className="text-white">{(confidence * 100).toFixed(0)}%</span>
           </div>
           <div className="text-slate-400">
-            Algorithm Version: <span className="text-white">{latestScore?.algorithm_version || '2.0'}</span>
+            Algorithm Version: <span className="text-white">{(latestScore as any)?.algorithm_version || '2.0'}</span>
           </div>
         </div>
 

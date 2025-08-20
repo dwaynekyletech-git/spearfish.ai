@@ -54,13 +54,13 @@ export const CompanyDataSchema = z.object({
   yc_api_id: z.number().optional(),
   name: z.string(),
   batch: z.string(),
-  industry: z.string().optional(),
-  subindustry: z.string().optional(),
-  one_liner: z.string().optional(),
-  long_description: z.string().optional(),
-  website_url: z.string().optional(),
+  industry: z.string().nullable().optional(),
+  subindustry: z.string().nullable().optional(),
+  one_liner: z.string().nullable().optional(),
+  long_description: z.string().nullable().optional(),
+  website_url: z.string().nullable().optional(),
   team_size: z.number().nullable().optional(),
-  launched_at: z.number().optional(), // Unix timestamp
+  launched_at: z.number().nullable().optional(), // Unix timestamp
   status: z.enum(['Active', 'Acquired', 'Public', 'Inactive']).default('Active'),
   tags: z.union([z.array(z.string()), z.string()]).transform(val => 
     typeof val === 'string' ? (val ? val.split(',').map(s => s.trim()) : []) : val
@@ -69,7 +69,7 @@ export const CompanyDataSchema = z.object({
     typeof val === 'string' ? (val ? val.split(',').map(s => s.trim()) : []) : val
   ).default([]),
   is_hiring: z.boolean().default(false),
-  small_logo_thumb_url: z.string().optional(),
+  small_logo_thumb_url: z.string().nullable().optional(),
   github_repos: z.array(z.any()).default([]),
   huggingface_models: z.array(z.any()).default([]),
   ai_confidence_score: z.number().min(0).max(1).nullable().optional(),

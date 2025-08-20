@@ -5,40 +5,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { CompanyTeamData, FounderProfile } from './founder-scraper-service';
+import { CompanyTeamData, FounderProfile, StoredFounder, StoredFundingSummary } from './types/founder-types';
 import { logInfo, logDebug, logWarn, logError } from './logger';
-
-// =============================================================================
-// Type Definitions
-// =============================================================================
-
-export interface StoredFounder {
-  id: string;
-  company_id: string;
-  name: string;
-  title: string;
-  bio?: string;
-  linkedin_url?: string;
-  twitter_url?: string;
-  email?: string;
-  image_url?: string;
-  background?: string[];
-  education?: string[];
-  source_url?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StoredFundingSummary {
-  id: string;
-  company_id: string;
-  total_funding?: string;
-  key_investors: string[];
-  last_updated: string;
-  sources: string[];
-  created_at: string;
-  updated_at: string;
-}
 
 // =============================================================================
 // Database Service Class

@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage"
+    "test:ci": "jest --ci --coverage",
+    "script:discover-ai-companies": "tsx scripts/discover-ai-companies.ts",
+    "script:fix-ai-classification": "tsx scripts/fix-ai-classification.ts",
+    "script:debug-ai-detection": "tsx scripts/debug-ai-detection.ts",
+    "import:yc": "tsx scripts/import-yc-json.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.23",
@@ -20,7 +24,8 @@
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.3",
     "ai": "^4.3.17",
-    "dotenv": "^17.2.0",
+    "apify-client": "^2.15.1",
+    "dotenv": "^17.2.1",
     "next": "^14.2.25",
     "openai": "^5.10.1",
     "react": "^18.3.1",
@@ -42,6 +47,7 @@
     "jest-environment-jsdom": "^30.0.4",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.7.1",
     "typescript": "^5.7.2"
   }
 }

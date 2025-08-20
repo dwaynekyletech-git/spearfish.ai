@@ -14,6 +14,7 @@ export interface FilterState {
   teamSize: string[];
   techStack: string[];
   hiringStatus: string[];
+  enrichmentStatus: string[];
 }
 
 interface FilterSidebarProps {
@@ -26,7 +27,8 @@ export function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     ycBatch: [],
     teamSize: [],
     techStack: [],
-    hiringStatus: []
+    hiringStatus: [],
+    enrichmentStatus: []
   });
 
   const handleFilterChange = (category: keyof FilterState, value: string, checked: boolean) => {
@@ -164,6 +166,32 @@ export function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
           </div>
         </div>
 
+        {/* Data Enrichment Filter */}
+        <div>
+          <h4 className="text-sm font-medium text-slate-300 mb-3">Data Quality</h4>
+          <div className="space-y-2">
+            {[
+              { label: 'Full Profile (Enriched)', value: 'enriched' },
+              { label: 'Basic Profile Only', value: 'basic' }
+            ].map((enrichment) => (
+              <label key={enrichment.value} className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.enrichmentStatus.includes(enrichment.value)}
+                  onChange={(e) => handleFilterChange('enrichmentStatus', enrichment.value, e.target.checked)}
+                  className="rounded border-slate-600 bg-slate-700 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
+                />
+                <span className="ml-2 text-sm text-slate-300 hover:text-white transition-colors">
+                  {enrichment.label}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="mt-2 text-xs text-slate-400">
+            Full profiles include founders, jobs, and detailed company data
+          </div>
+        </div>
+
         {/* Clear Filters */}
         <div className="pt-4 border-t border-slate-700">
           <button
@@ -172,7 +200,8 @@ export function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
               ycBatch: [],
               teamSize: [],
               techStack: [],
-              hiringStatus: []
+              hiringStatus: [],
+              enrichmentStatus: []
             })}
             className="w-full px-4 py-2 text-sm text-slate-300 hover:text-white bg-slate-700/50 hover:bg-slate-600 rounded-lg transition-colors"
           >

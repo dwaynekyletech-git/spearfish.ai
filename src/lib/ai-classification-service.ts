@@ -8,7 +8,7 @@
 import { generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
-import { YCCompany, ValidatedCompany } from './company-data-service';
+import { CompanyData } from './spearfish-scoring-service';
 import { getCacheService, CACHE_TTL } from './cache-service';
 import { getCostGuard } from './api-cost-guard';
 import { getModelSelector } from './model-selector';
@@ -96,7 +96,7 @@ export class AIClassificationService {
    * Classify a single company using AI with caching and cost controls
    */
   async classifyCompany(
-    company: YCCompany | ValidatedCompany,
+    company: CompanyData | any,
     options: ClassificationOptions = {}
   ): Promise<AIClassificationResult> {
     const startTime = Date.now();
@@ -144,7 +144,7 @@ export class AIClassificationService {
   }
 
   private async performClassification(
-    company: YCCompany | ValidatedCompany,
+    company: CompanyData | any,
     options: ClassificationOptions,
     startTime: number
   ): Promise<AIClassificationResult> {
@@ -217,7 +217,7 @@ export class AIClassificationService {
     return this.validateAndProcessResult(object, processingTime);
   }
 
-  private generateCacheKey(company: YCCompany | ValidatedCompany, options: ClassificationOptions): string {
+  private generateCacheKey(company: CompanyData | any, options: ClassificationOptions): string {
     // Create cache key from company data that affects classification
     const keyComponents = [
       company.name,
@@ -239,7 +239,7 @@ export class AIClassificationService {
    * Classify multiple companies in batch
    */
   async classifyCompaniesBatch(
-    companies: (YCCompany | ValidatedCompany)[],
+    companies: (CompanyData | any)[],
     options: ClassificationOptions = {}
   ): Promise<BatchClassificationResult[]> {
     const results: BatchClassificationResult[] = [];
@@ -335,7 +335,7 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   private buildClassificationPrompt(
-    company: YCCompany | ValidatedCompany, 
+    company: CompanyData | any, 
     options: ClassificationOptions
   ): string {
     const includeReasoning = options.includeReasoning !== false;
@@ -441,7 +441,7 @@ Respond ONLY with valid JSON in this exact format:
   }
 
   private fallbackClassification(
-    company: YCCompany | ValidatedCompany, 
+    company: CompanyData | any, 
     processingTime: number
   ): AIClassificationResult {
     // Simple rule-based fallback
@@ -571,7 +571,7 @@ export function createAIClassificationService(): AIClassificationService {
 /**
  * Quick function to classify a single company
  */
-export async function classifyCompanyAI(company: YCCompany | ValidatedCompany): Promise<AIClassificationResult> {
+export async function classifyCompanyAI(company: CompanyData | any): Promise<AIClassificationResult> {
   const service = createAIClassificationService();
   return service.classifyCompany(company);
 }
@@ -580,7 +580,7 @@ export async function classifyCompanyAI(company: YCCompany | ValidatedCompany): 
  * Quick function to classify multiple companies
  */
 export async function classifyCompaniesBatchAI(
-  companies: (YCCompany | ValidatedCompany)[]
+  companies: (CompanyData | any)[]
 ): Promise<BatchClassificationResult[]> {
   const service = createAIClassificationService();
   return service.classifyCompaniesBatch(companies);

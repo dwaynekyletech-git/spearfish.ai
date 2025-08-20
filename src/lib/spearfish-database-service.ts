@@ -229,6 +229,7 @@ export class SpearfishDatabaseService {
           batch,
           industry,
           subindustry,
+          industries,
           one_liner,
           long_description,
           website_url,
@@ -280,11 +281,12 @@ export class SpearfishDatabaseService {
       }
 
       // Apply pagination
-      if (options.limit) {
+      if (options.offset !== undefined && options.limit) {
+        console.log(`[DEBUG] DB Service - Using range: ${options.offset} to ${options.offset + options.limit - 1}`);
+        query = query.range(options.offset, options.offset + options.limit - 1);
+      } else if (options.limit) {
+        console.log(`[DEBUG] DB Service - Using limit: ${options.limit}`);
         query = query.limit(options.limit);
-      }
-      if (options.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
       }
 
       const { data, error } = await query;
@@ -294,6 +296,7 @@ export class SpearfishDatabaseService {
         throw error;
       }
 
+      console.log(`[DEBUG] DB Service - Returned ${(data || []).length} companies`);
       return data || [];
     } catch (error) {
       console.error('Error in getCompaniesWithScores:', error);
@@ -370,6 +373,7 @@ export class SpearfishDatabaseService {
           batch,
           industry,
           subindustry,
+          industries,
           one_liner,
           long_description,
           website_url,

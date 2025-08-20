@@ -44,8 +44,34 @@ export async function GET(
       );
     }
 
+    // Ensure findings exist and are in the correct format
+    const findings = progress.findings || [];
+    
+    console.log('DEBUG: Research results API - findings count:', findings.length);
+    console.log('DEBUG: Progress object keys:', Object.keys(progress));
+    console.log('DEBUG: Sample finding:', findings[0] ? {
+      id: findings[0].id,
+      title: findings[0].title,
+      finding_type: findings[0].finding_type
+    } : 'No findings');
+
+    if (findings.length === 0) {
+      console.warn('No findings found for completed research session:', sessionId);
+      return NextResponse.json({
+        success: true,
+        summary: {
+          total_findings: 0,
+          categories: [],
+          high_confidence_findings: 0,
+          completion_time: new Date().toISOString()
+        },
+        findings_by_category: {},
+        findings: []
+      });
+    }
+
     // Group findings by category for better organization
-    const groupedFindings = progress.findings.reduce((groups, finding) => {
+    const groupedFindings = findings.reduce((groups, finding) => {
       const category = finding.finding_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
       if (!groups[category]) {
         groups[category] = [];
@@ -70,9 +96,9 @@ export async function GET(
 
     // Create a summary structure
     const summary = {
-      total_findings: progress.findings.length,
+      total_findings: findings.length,
       categories: Object.keys(groupedFindings),
-      high_confidence_findings: progress.findings.filter(f => f.confidence_score >= 0.7).length,
+      high_confidence_findings: findings.filter(f => f.confidence_score >= 0.7).length,
       completion_time: new Date().toISOString()
     };
 
@@ -81,7 +107,7 @@ export async function GET(
       summary,
       findings_by_category: groupedFindings,
       // Also include flat findings for backward compatibility
-      findings: progress.findings.map(finding => ({
+      findings: findings.map(finding => ({
         id: finding.id,
         category: finding.finding_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
         title: finding.title,

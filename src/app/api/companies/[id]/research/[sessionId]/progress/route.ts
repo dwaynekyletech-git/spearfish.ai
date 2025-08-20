@@ -29,7 +29,14 @@ export async function GET(
     const researchService = getGlobalResearchService();
     const progress = await researchService.getResearchProgress(sessionId);
     
-    console.log(`Looking for session ${sessionId}, found:`, progress);
+    console.log(`DEBUG: Progress API - Looking for session ${sessionId}`);
+    console.log(`DEBUG: Progress found:`, progress ? {
+      status: progress.status,
+      totalQueries: progress.totalQueries,
+      completedQueries: progress.completedQueries,
+      findingsCount: progress.findings?.length || 0,
+      hasQuerySources: !!progress.querySources?.length
+    } : null);
     
     if (!progress) {
       return NextResponse.json(

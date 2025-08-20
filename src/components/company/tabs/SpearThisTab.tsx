@@ -402,10 +402,44 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
               setResearchLog(prev => prev.map(log => 
                 log.status === 'processing' ? {...log, status: 'completed'} : log
               ));
-              loadResearchResults(sessionId);
-              // Mark research step as complete and enable artifacts step
-              markStepComplete('research');
-              navigateToStep('artifacts');
+              
+              // Load research results with retry logic
+              const loadResultsWithRetry = async (retryCount = 0): Promise<boolean> => {
+                try {
+                  const response = await fetch(`/api/companies/${company.id}/research/${sessionId}/results`);
+                  if (response.ok) {
+                    const data = await response.json();
+                    const findings = data.findings || [];
+                    
+                    if (findings.length === 0 && retryCount < 3) {
+                      console.log(`Research results empty, retrying... (attempt ${retryCount + 1})`);
+                      await new Promise(resolve => setTimeout(resolve, 2000));
+                      return await loadResultsWithRetry(retryCount + 1);
+                    }
+                    
+                    setResearchFindings(findings);
+                    
+                    if (findings.length === 0) {
+                      console.error('Research completed but no findings were loaded after retries');
+                      return false;
+                    } else {
+                      console.log('Research results successfully loaded:', findings.length, 'findings');
+                      return true;
+                    }
+                  }
+                  return false;
+                } catch (error) {
+                  console.error('Error in loadResultsWithRetry:', error);
+                  return false;
+                }
+              };
+              
+              const resultsLoaded = await loadResultsWithRetry();
+              if (resultsLoaded) {
+                // Mark research step as complete and enable artifacts step
+                markStepComplete('research');
+                navigateToStep('artifacts');
+              }
             }
             loadResearchHistory(); // Refresh history
           }
@@ -422,10 +456,31 @@ export function SpearThisTab({ company }: SpearThisTabProps) {
 
   const loadResearchResults = async (sessionId: string) => {
     try {
+      console.log('DEBUG: Loading research results for session:', sessionId);
       const response = await fetch(`/api/companies/${company.id}/research/${sessionId}/results`);
+      
       if (response.ok) {
         const data = await response.json();
-        setResearchFindings(data.findings || []);
+        console.log('DEBUG: Research results loaded:', {
+          success: data.success,
+          findingsCount: data.findings?.length || 0,
+          categoriesCount: data.summary?.categories?.length || 0,
+          totalFindings: data.summary?.total_findings || 0
+        });
+        
+        const findings = data.findings || [];
+        if (findings.length === 0) {
+          console.warn('No research findings returned from API for completed session');
+        }
+        
+        setResearchFindings(findings);
+      } else {
+        const errorData = await response.json().catch(() => null);
+        console.error('Failed to load research results:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
       }
     } catch (error) {
       console.error('Failed to load results:', error);

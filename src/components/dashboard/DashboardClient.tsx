@@ -20,7 +20,8 @@ export function DashboardClient() {
     ycBatch: [],
     teamSize: [],
     techStack: [],
-    hiringStatus: []
+    hiringStatus: [],
+    enrichmentStatus: []
   });
 
   const handleSearch = (query: string) => {

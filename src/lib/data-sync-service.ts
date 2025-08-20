@@ -121,14 +121,14 @@ export class DataSyncService {
         }
 
         companiesByRepo.get(companyId)!.repos.push({
-          full_name: assoc.github_repositories.full_name,
-          html_url: assoc.github_repositories.html_url,
-          description: assoc.github_repositories.description,
-          stars_count: assoc.github_repositories.stars_count,
-          forks_count: assoc.github_repositories.forks_count,
-          language: assoc.github_repositories.language,
+          full_name: (assoc.github_repositories as any).full_name,
+          html_url: (assoc.github_repositories as any).html_url,
+          description: (assoc.github_repositories as any).description,
+          stars_count: (assoc.github_repositories as any).stars_count,
+          forks_count: (assoc.github_repositories as any).forks_count,
+          language: (assoc.github_repositories as any).language,
           is_primary: assoc.is_primary,
-          last_synced: assoc.github_repositories.last_synced_at
+          last_synced: (assoc.github_repositories as any).last_synced_at
         });
       });
 
@@ -136,7 +136,8 @@ export class DataSyncService {
       result.companiesProcessed = companiesByRepo.size;
 
       // Update each company's github_repos field
-      for (const [companyId, data] of companiesByRepo) {
+      const companyEntries = Array.from(companiesByRepo.entries());
+      for (const [companyId, data] of companyEntries) {
         try {
           const { error: updateError } = await this.supabase
             .from('companies')
@@ -262,15 +263,15 @@ export class DataSyncService {
         }
 
         companiesByModel.get(companyId)!.models.push({
-          model_id: assoc.huggingface_models.model_id,
-          model_name: assoc.huggingface_models.model_name,
-          author: assoc.huggingface_models.author,
-          task: assoc.huggingface_models.task,
-          downloads: assoc.huggingface_models.downloads,
-          likes: assoc.huggingface_models.likes,
-          model_card_url: assoc.huggingface_models.model_card_url,
+          model_id: (assoc.huggingface_models as any).model_id,
+          model_name: (assoc.huggingface_models as any).model_name,
+          author: (assoc.huggingface_models as any).author,
+          task: (assoc.huggingface_models as any).task,
+          downloads: (assoc.huggingface_models as any).downloads,
+          likes: (assoc.huggingface_models as any).likes,
+          model_card_url: (assoc.huggingface_models as any).model_card_url,
           is_primary: assoc.is_primary,
-          last_synced: assoc.huggingface_models.last_synced_at
+          last_synced: (assoc.huggingface_models as any).last_synced_at
         });
       });
 
@@ -278,7 +279,8 @@ export class DataSyncService {
       result.companiesProcessed = companiesByModel.size;
 
       // Update each company's huggingface_models field
-      for (const [companyId, data] of companiesByModel) {
+      const modelEntries = Array.from(companiesByModel.entries());
+      for (const [companyId, data] of modelEntries) {
         try {
           const { error: updateError } = await this.supabase
             .from('companies')
@@ -426,8 +428,8 @@ export class DataSyncService {
         companiesWithHFData: companiesWithHF || 0,
         totalGitHubRepos: githubRepos || 0,
         totalAssociations: associations || 0,
-        githubDataPercentage: totalCompanies ? Math.round((companiesWithGithub / totalCompanies) * 100) : 0,
-        hfDataPercentage: totalCompanies ? Math.round((companiesWithHF / totalCompanies) * 100) : 0,
+        githubDataPercentage: totalCompanies ? Math.round(((companiesWithGithub || 0) / totalCompanies) * 100) : 0,
+        hfDataPercentage: totalCompanies ? Math.round(((companiesWithHF || 0) / totalCompanies) * 100) : 0,
         lastChecked: new Date().toISOString()
       };
     } catch (error) {

@@ -260,7 +260,7 @@ export class HuggingFaceDiscoveryService {
           'Authorization': this.hfToken ? `Bearer ${this.hfToken}` : '',
           'User-Agent': 'SpearfishAI/1.0'
         }
-      }, getSSRFConfig('huggingface'));
+      }, getSSRFConfig('general'));
 
       this.updateRateLimit(response.headers);
 
@@ -295,7 +295,7 @@ export class HuggingFaceDiscoveryService {
           'Authorization': this.hfToken ? `Bearer ${this.hfToken}` : '',
           'User-Agent': 'SpearfishAI/1.0'
         }
-      }, getSSRFConfig('huggingface'));
+      }, getSSRFConfig('general'));
 
       this.updateRateLimit(response.headers);
 

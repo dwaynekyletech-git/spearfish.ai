@@ -311,7 +311,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully removed association between ${association.companies?.name || 'Unknown Company'} and ${association.huggingface_models?.model_id || 'Unknown Model'}`
+      message: `Successfully removed association between ${(association.companies as any)?.name || 'Unknown Company'} and ${(association.huggingface_models as any)?.model_id || 'Unknown Model'}`
     });
 
   } catch (error) {

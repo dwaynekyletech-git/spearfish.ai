@@ -2,14 +2,16 @@
  * Company Discovery Client Component
  * 
  * Main client component for displaying company cards with spearfish scores
+ * Now uses client-side caching to reduce API calls and eliminate rate limiting issues
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { CompanyCard } from './CompanyCard';
 import { CompanyData } from '@/lib/spearfish-scoring-service';
 import { FilterState } from './FilterSidebar';
+import { useCompaniesCache, CompaniesParams } from '@/hooks/useCompaniesCache';
 
 interface CompanyWithScore extends CompanyData {
   spearfish_score?: number;
@@ -22,18 +24,6 @@ interface CompanyDiscoveryClientProps {
   filters?: FilterState;
 }
 
-interface ApiResponse {
-  success: boolean;
-  data: CompanyWithScore[];
-  metadata: {
-    total: number;
-    limit: number;
-    offset: number;
-    timestamp: string;
-  };
-  error?: string;
-}
-
 export function CompanyDiscoveryClient({ 
   searchQuery = '', 
   selectedTags = [], 
@@ -42,102 +32,73 @@ export function CompanyDiscoveryClient({
     ycBatch: [],
     teamSize: [],
     techStack: [],
-    hiringStatus: []
+    hiringStatus: [],
+    enrichmentStatus: []
   }
 }: CompanyDiscoveryClientProps) {
-  const [companies, setCompanies] = useState<CompanyWithScore[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  // Convert filters to API parameters
+  const apiParams: CompaniesParams = useMemo(() => {
+    const params: CompaniesParams = {
+      limit: 20,
+      offset: 0,
+    };
 
-  // Fetch companies from API
-  const fetchCompanies = async (reset: boolean = false) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const currentOffset = reset ? 0 : offset;
-      const searchParams = new URLSearchParams({
-        limit: '20',
-        offset: currentOffset.toString(),
-      });
-
-      // Add search query if provided
-      if (searchQuery.trim()) {
-        searchParams.append('search', searchQuery.trim());
-      }
-
-      // Add filters
-      if (filters.ycBatch && filters.ycBatch.length > 0) {
-        searchParams.append('batches', filters.ycBatch.join(','));
-      }
-
-      if (filters.teamSize && filters.teamSize.length > 0) {
-        searchParams.append('teamSizes', filters.teamSize.join(','));
-      }
-
-      if (filters.hiringStatus && filters.hiringStatus.includes('hiring')) {
-        searchParams.append('hiringOnly', 'true');
-      }
-
-      if (filters.spearfishScore && filters.spearfishScore.length > 0) {
-        // Convert spearfish score filter to minimum score
-        const minScores = filters.spearfishScore.map(range => {
-          switch (range) {
-            case '8-10': return 8;
-            case '6-8': return 6;
-            case '4-6': return 4;
-            case '2-4': return 2;
-            case '0-2': return 0;
-            default: return 0;
-          }
-        });
-        const minScore = Math.min(...minScores);
-        searchParams.append('minScore', minScore.toString());
-      }
-
-      const response = await fetch(`/api/company-data?${searchParams}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result: ApiResponse = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch companies');
-      }
-
-      if (reset) {
-        setCompanies(result.data);
-        setOffset(result.data.length);
-      } else {
-        setCompanies(prev => [...prev, ...result.data]);
-        setOffset(prev => prev + result.data.length);
-      }
-
-      // Check if there are more results
-      setHasMore(result.data.length === 20);
-
-    } catch (err) {
-      console.error('Error fetching companies:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch companies');
-    } finally {
-      setIsLoading(false);
+    // Add search query if provided
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
-  };
 
-  // Initial load and reload when search/filters change
-  useEffect(() => {
-    setOffset(0);
-    fetchCompanies(true);
-  }, [searchQuery, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Add batch filter
+    if (filters.ycBatch && filters.ycBatch.length > 0) {
+      params.batches = filters.ycBatch;
+    }
 
-  // Load more function for infinite scroll
-  const loadMore = () => {
-    if (!isLoading && hasMore) {
-      fetchCompanies(false);
+    // Add team size filter
+    if (filters.teamSize && filters.teamSize.length > 0) {
+      params.teamSizes = filters.teamSize.map(size => parseInt(size.toString()));
+    }
+
+    // Add hiring status filter
+    if (filters.hiringStatus && filters.hiringStatus.includes('hiring')) {
+      params.hiringOnly = true;
+    }
+
+    // Add spearfish score filter (convert to minimum score)
+    if (filters.spearfishScore && filters.spearfishScore.length > 0) {
+      const minScores = filters.spearfishScore.map(range => {
+        switch (range) {
+          case '8-10': return 8;
+          case '6-8': return 6;
+          case '4-6': return 4;
+          case '2-4': return 2;
+          case '0-2': return 0;
+          default: return 0;
+        }
+      });
+      params.minScore = Math.min(...minScores);
+    }
+
+    // Note: Enrichment status filter removed as we no longer use Apify enrichment
+
+    return params;
+  }, [searchQuery, filters]);
+
+  // Use the cached companies data hook
+  const {
+    data: companies,
+    isLoading,
+    isLoadingMore,
+    error,
+    isStale,
+    hasMore,
+    refetch,
+    loadMore,
+  } = useCompaniesCache(apiParams);
+
+  // Handle load more function for infinite scroll
+  const handleLoadMore = () => {
+    if (!isLoading && !isLoadingMore && hasMore) {
+      loadMore();
     }
   };
 
@@ -145,11 +106,14 @@ export function CompanyDiscoveryClient({
   const filteredCompanies = companies.filter(company => {
     if (selectedTags.length === 0) return true;
     return selectedTags.some(tag => 
-      company.tags?.some(companyTag => 
+      company.tags?.some((companyTag: string) => 
         companyTag.toLowerCase().includes(tag.toLowerCase())
       )
     );
   });
+
+  // Debug logging for filtering
+  console.log(`[DEBUG] UI Filter - Total companies: ${companies.length}, Selected tags: ${selectedTags.length}, Filtered companies: ${filteredCompanies.length}`);
 
   if (error) {
     return (
@@ -158,7 +122,7 @@ export function CompanyDiscoveryClient({
           <div className="text-red-400 mb-2">Error loading companies</div>
           <div className="text-slate-400 text-sm mb-4">{error}</div>
           <button
-            onClick={() => fetchCompanies(true)}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
           >
             Try Again
@@ -172,16 +136,31 @@ export function CompanyDiscoveryClient({
     <div className="space-y-6">
       {/* Results Header */}
       <div className="flex items-center justify-between">
-        <div className="text-slate-300">
+        <div className="text-slate-300 flex items-center gap-2">
           {isLoading && companies.length === 0 ? (
             'Loading companies...'
           ) : (
             `Showing ${filteredCompanies.length} companies${searchQuery ? ` for "${searchQuery}"` : ''}`
           )}
+          {/* Show cache status indicator */}
+          {isStale && !isLoading && (
+            <span className="px-2 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded-md border border-yellow-500/30">
+              Refreshing...
+            </span>
+          )}
         </div>
         {filteredCompanies.length > 0 && (
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-slate-400 flex items-center gap-2">
             Sorted by Spearfish Score
+            {isStale && (
+              <button
+                onClick={() => refetch()}
+                className="text-xs px-2 py-1 text-purple-400 hover:text-purple-300 border border-purple-500/30 rounded transition-colors"
+                title="Refresh data"
+              >
+                Refresh
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -233,10 +212,18 @@ export function CompanyDiscoveryClient({
       {!isLoading && hasMore && filteredCompanies.length > 0 && (
         <div className="text-center py-8">
           <button
-            onClick={loadMore}
-            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg transition-colors"
+            onClick={handleLoadMore}
+            disabled={isLoadingMore}
+            className="px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Load More Companies
+            {isLoadingMore ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Loading More...
+              </div>
+            ) : (
+              'Load More Companies'
+            )}
           </button>
         </div>
       )}

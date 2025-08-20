@@ -9,9 +9,46 @@ import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { createSpearfishDatabaseService } from '../../../lib/spearfish-database-service';
 import { CompanyData, spearfishScoringService } from '../../../lib/spearfish-scoring-service';
+import { createHash } from 'crypto';
 
 // Force this route to be dynamic
 export const dynamic = 'force-dynamic';
+
+// =============================================================================
+// Helper Functions for Caching
+// =============================================================================
+
+/**
+ * Generate ETag for response data
+ */
+function generateETag(data: any): string {
+  const hash = createHash('md5');
+  hash.update(JSON.stringify(data));
+  return `"${hash.digest('hex')}"`;
+}
+
+/**
+ * Check if request includes conditional headers
+ */
+function checkConditionalRequest(request: NextRequest, etag: string): boolean {
+  const ifNoneMatch = request.headers.get('if-none-match');
+  return ifNoneMatch === etag;
+}
+
+/**
+ * Get cache-friendly timestamp for last modified
+ */
+function getLastModified(companies: any[]): string {
+  if (companies.length === 0) return new Date().toUTCString();
+  
+  // Get the latest updated_at timestamp from companies
+  const latestUpdate = companies.reduce((latest, company) => {
+    const companyUpdate = new Date(company.updated_at || company.created_at || new Date());
+    return companyUpdate > latest ? companyUpdate : latest;
+  }, new Date(0));
+  
+  return latestUpdate.toUTCString();
+}
 
 // Query parameters schema
 const QueryParamsSchema = z.object({
@@ -129,13 +166,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryParams = QueryParamsSchema.parse(Object.fromEntries(searchParams));
 
-    // Get companies with scores
+    // Get companies with scores - fetch one extra to check if more exist
     const databaseService = createSpearfishDatabaseService(true);
     
     let companies;
     try {
       companies = await databaseService.getCompaniesWithScores({
-        limit: queryParams.limit + 10, // Get a few extra for filtering
+        limit: queryParams.limit + 1, // Get one extra to check if more exist
         offset: queryParams.offset,
         batches: queryParams.batches,
         aiOnly: false, // Temporarily disable AI-only filter to get all companies
@@ -181,7 +218,9 @@ export async function GET(request: NextRequest) {
       companies = companies.filter(company => company.is_hiring);
     }
 
-    // Limit to requested amount
+    // Check if there are more results and limit to requested amount
+    const hasMoreResults = companies.length > queryParams.limit;
+    console.log(`[DEBUG] Company data API - offset: ${queryParams.offset}, limit: ${queryParams.limit}, fetched: ${companies.length}, hasMore: ${hasMoreResults}`);
     companies = companies.slice(0, queryParams.limit);
 
     // Calculate scores for companies that don't have them and transform data
@@ -234,19 +273,47 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    const response = NextResponse.json({
+    // Prepare response data
+    const responseData = {
       success: true,
       data: transformedCompanies,
       metadata: {
         total: transformedCompanies.length,
         limit: queryParams.limit,
         offset: queryParams.offset,
+        hasMore: hasMoreResults,
         timestamp: new Date().toISOString(),
       },
-    });
+    };
 
-    // Add caching headers
-    response.headers.set('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=30');
+    // Generate ETag for cache validation
+    const etag = generateETag(responseData);
+    const lastModified = getLastModified(transformedCompanies);
+
+    // Check for conditional requests (304 Not Modified)
+    if (checkConditionalRequest(request, etag)) {
+      return new NextResponse(null, { 
+        status: 304,
+        headers: {
+          'ETag': etag,
+          'Last-Modified': lastModified,
+          'Cache-Control': 'public, max-age=180, stale-while-revalidate=60',
+        }
+      });
+    }
+
+    // Create response with cache headers
+    const response = NextResponse.json(responseData);
+
+    // Add comprehensive caching headers
+    response.headers.set('ETag', etag);
+    response.headers.set('Last-Modified', lastModified);
+    response.headers.set('Cache-Control', 'public, max-age=180, stale-while-revalidate=60');
+    response.headers.set('Vary', 'Accept-Encoding');
+    
+    // Add custom headers for debugging
+    response.headers.set('X-Cache-Status', 'MISS');
+    response.headers.set('X-Generated-At', new Date().toISOString());
     
     return response;
 
